@@ -1,6 +1,14 @@
 # Make dependency graph:
 # test -> lint -> $(GOMETALINTER)
 
+# Starts the server.
+# Installs fresh if missing.
+serve: $(FRESH)
+	cd web && fresh
+
+$(FRESH):
+	go get github.com/pilu/fresh
+
 # PKGS stores the results of the script in $().
 # i.e., the script results in: news/api, the rule test then will append the package name to
 # `go test`, like so: `go test news/api`. (skipping /vendor directory)

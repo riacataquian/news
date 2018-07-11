@@ -1,1 +1,5 @@
 .notes
+
+# build artifacts
+web/web
+web/tmp
