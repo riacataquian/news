@@ -1,0 +1,24 @@
+language: go
+
+go:
+  - "1.10.x"
+
+install: true
+
+before_install:
+  - chmod +x build.sh
+
+stages:
+  - build
+  - spelling
+
+jobs:
+  include:
+    - stage: build
+      script:
+        - go get -u golang.org/x/lint/golint
+        - ./build.sh
+    - stage: spelling
+      script:
+        - go get -u github.com/client9/misspell/cmd/misspell
+        - misspell -error .
