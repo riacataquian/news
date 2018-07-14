@@ -3,16 +3,14 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"log"
-
 	"net/http"
 	"os"
 
-	"github.com/riacataquian/news/pkg/httperror"
 	"github.com/riacataquian/news/web/handler"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/mux"
 )
 
@@ -32,13 +30,6 @@ func main() {
 		srv.Handle(route.Path, middleware(ctx, route.HandlerFunc))
 	}
 
-	env := os.Getenv("APP_ENV")
-	if env == "prod" {
-		log.Println("Running api server on production")
-	} else {
-		log.Println("Running api server on dev")
-	}
-
 	if err := http.ListenAndServe(":8000", srv); err != nil {
 		log.Fatalf("could not listen to port 8000: %v", err)
 	}
@@ -46,7 +37,7 @@ func main() {
 
 func middleware(ctx context.Context, h handler.Func) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("content-type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 
 		resp, err := h(ctx)
 		if err == nil {
@@ -54,10 +45,10 @@ func middleware(ctx context.Context, h handler.Func) http.HandlerFunc {
 			encode(w, resp)
 		} else {
 			var code int
-			if v, ok := err.(*httperror.HTTPError); ok {
-				code = v.Code
-			} else {
+			if err.GetCode() == 0 {
 				code = DefaultErrStatusCode
+			} else {
+				code = int(err.GetCode())
 			}
 
 			w.WriteHeader(code)
@@ -66,9 +57,9 @@ func middleware(ctx context.Context, h handler.Func) http.HandlerFunc {
 	}
 }
 
-// encode encodes `r` as JSON responses.
-func encode(w io.Writer, r interface{}) {
-	b, err := json.Marshal(r)
+// encode encodes proto messages as binary-encoded responses.
+func encode(w io.Writer, res proto.Message) {
+	b, err := proto.Marshal(res)
 	if err != nil {
 		log.Fatalf("error marshalling response: %v", err)
 	}

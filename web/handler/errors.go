@@ -6,10 +6,12 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/riacataquian/news/pkg/httperror"
+	"github.com/golang/protobuf/proto"
+
+	pb "github.com/riacataquian/news/protos/api"
 )
 
 // NotFound handles HTTP requests for missing or not found pages and resources.
-func NotFound(_ context.Context) ([]byte, error) {
-	return nil, httperror.New(http.StatusNotFound, "page not found")
+func NotFound(_ context.Context) (proto.Message, *pb.HTTPError) {
+	return nil, &pb.HTTPError{Code: http.StatusNotFound, Error: &pb.Error{Message: "page not found"}}
 }

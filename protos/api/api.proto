@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+// Package api ...
+package api;
+
+// HTTPError ...
+message HTTPError {
+  int64 code = 1;
+  Error error = 2;
+}
+
+// Error ...
+message Error {
+  string message = 1;
+  repeated FieldErr errors = 2;
+}
+
+// FieldErr ...
+message FieldErr {
+  string field = 1;
+  repeated string errors = 2;
+}
