@@ -6,7 +6,7 @@ import (
 	"context"
 	"net/http"
 
-	"news/pkg/httperror"
+	"github.com/riacataquian/news/pkg/httperror"
 )
 
 // NotFound handles HTTP requests for missing or not found pages and resources.

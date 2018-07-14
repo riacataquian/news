@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"os"
 
-	"news/pkg/httperror"
-	"news/web/handler"
+	"github.com/riacataquian/news/pkg/httperror"
+	"github.com/riacataquian/news/web/handler"
 
 	"github.com/gorilla/mux"
 )
