@@ -7,7 +7,6 @@ install: true
 
 before_install:
   - chmod +x build.sh
-  # - go get ./...
 
 stages:
   - build
