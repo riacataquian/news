@@ -20,7 +20,7 @@ var originalClient = client
 type FakeParams string
 
 // Encode ...
-func (fp FakeParams) Encode(_ *http.Request) (string, error) {
+func (fp FakeParams) Encode() (string, error) {
 	return "sources=bloomberg,financial-times", nil
 }
 
@@ -79,6 +79,31 @@ func (f FakeClient) GetTopHeadlines(p newsclient.Params) (*news.Response, error)
 			},
 		}, nil
 	}
+}
+
+func (f FakeClient) DispatchRequest(r *http.Request) (*news.Response, error) {
+	if f.IsValid {
+		return &news.Response{
+			Status:       "200",
+			TotalResults: 2,
+			Articles: []news.News{
+				{
+					Source: news.Source{
+						ID:   "bloomberg",
+						Name: "Bloomberg",
+					},
+					Author:      "some-author",
+					Title:       "some-title",
+					Description: "some-description",
+					URL:         "some-URL",
+					ImageURL:    "some-image-url",
+					PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
+				},
+			},
+		}, nil
+	}
+
+	return nil, errors.New("failed request")
 }
 
 func setupFakeClient(t *testing.T, queryParams string, isValid bool) FakeClient {
