@@ -201,8 +201,7 @@ func TestTopHeadlines(t *testing.T) {
 func TestTopHeadlinesErrors(t *testing.T) {
 	err := os.Setenv("API_KEY", "this is a test api key")
 	if err != nil {
-		// TODO
-		panic(err)
+		t.Logf("TopHeadlines: setting up an API_KEY: %v", err)
 	}
 
 	tests := []struct {
