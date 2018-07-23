@@ -29,7 +29,7 @@ func main() {
 }
 
 func serve(ctx context.Context) {
-	srv := mux.NewRouter()
+	srv := mux.NewRouter().PathPrefix("/api").Subrouter()
 	for _, route := range handler.Routes {
 		srv.Handle(route.Path, middleware(ctx, route.HandlerFunc))
 	}
@@ -45,8 +45,7 @@ func middleware(ctx context.Context, h handler.Func) http.HandlerFunc {
 
 		resp, err := h(ctx, r)
 		if err == nil {
-			// TODO: Work around hardcoded http.StatusOK.
-			w.WriteHeader(http.StatusOK)
+			w.WriteHeader(resp.Code)
 			encode(w, resp)
 		} else {
 			var code int

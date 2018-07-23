@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-// SuccessResponse ...
+// SuccessResponse describes a sucessful HTTP response.
 type SuccessResponse struct {
 	Code       int         `json:"code"`
 	RequestURL string      `json:"requestURL"`
@@ -21,7 +21,6 @@ var Routes = []struct {
 	Path        string
 	HandlerFunc Func
 }{
-	// TODO: gorilla mux subrouter.
-	{"/api/news", News},
+	{"/headlines", News},
 	{"/{*}", NotFound},
 }

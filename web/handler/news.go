@@ -14,7 +14,7 @@ import (
 
 var client newsclient.Client
 
-// News ...
+// News is the HTTP handler for news requests.
 func News(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
 	r.ParseForm()
 
@@ -22,8 +22,6 @@ func News(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
 		ServiceEndpoint: newsclient.ServiceEndpoint{
 			URL: newsclient.APIBaseURL + newsclient.TopHeadlinesPathPrefix,
 		},
-		ContextOrigin: ctx,
-		RequestOrigin: r,
 	}
 
 	dst := new(newsclient.TopHeadlinesParams)
@@ -32,17 +30,16 @@ func News(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
 		return nil, fmt.Errorf("error decoding params: %v", err)
 	}
 
-	return fetchNews(client, dst)
+	return fetchNews(ctx, r, client, dst)
 }
 
 // fetchNews ...
-func fetchNews(client newsclient.Client, dst newsclient.Params) (*SuccessResponse, error) {
-	news, err := client.GetTopHeadlines(dst)
+func fetchNews(ctx context.Context, r *http.Request, client newsclient.Client, params newsclient.Params) (*SuccessResponse, error) {
+	news, err := client.TopHeadlines(ctx, r, params)
 	if err != nil {
 		return nil, err
 	}
 
-	r := client.GetRequestOrigin()
 	return &SuccessResponse{
 		Code:       http.StatusOK,
 		RequestURL: r.URL.String(),

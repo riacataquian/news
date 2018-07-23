@@ -35,12 +35,9 @@ type TopHeadlinesParams struct {
 	Page     int    `schema:"page"`
 }
 
-// GetTopHeadlines ...
-func (c NewsClient) GetTopHeadlines(params Params) (*news.Response, error) {
-	pc := c.GetContextOrigin()
-	src := c.GetRequestOrigin()
-
-	ctx, cancel := context.WithTimeout(pc, 5*time.Second)
+// TopHeadlines ...
+func (c NewsClient) TopHeadlines(ctxOrigin context.Context, reqOrigin *http.Request, params Params) (*news.Response, error) {
+	ctx, cancel := context.WithTimeout(ctxOrigin, 5*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequest(http.MethodGet, c.URL, nil)
@@ -57,7 +54,7 @@ func (c NewsClient) GetTopHeadlines(params Params) (*news.Response, error) {
 		return nil, &httperror.HTTPError{
 			Code:       http.StatusBadRequest,
 			Message:    fmt.Sprintf("encoding query parameters: %v", err),
-			RequestURL: src.URL.String(),
+			RequestURL: reqOrigin.URL.String(),
 			DocsURL:    DocsBaseURL + "/endpoints" + TopHeadlinesPathPrefix,
 		}
 	}
@@ -69,7 +66,7 @@ func (c NewsClient) GetTopHeadlines(params Params) (*news.Response, error) {
 		return nil, &httperror.HTTPError{
 			Code:       http.StatusBadRequest,
 			Message:    err.Error(),
-			RequestURL: src.URL.String(),
+			RequestURL: reqOrigin.URL.String(),
 			DocsURL:    DocsBaseURL + "/authentication",
 		}
 	}
@@ -80,7 +77,7 @@ func (c NewsClient) GetTopHeadlines(params Params) (*news.Response, error) {
 		return nil, &httperror.HTTPError{
 			Code:       http.StatusBadRequest,
 			Message:    fmt.Sprintf("fetching top headlines: %v", err),
-			RequestURL: src.URL.String(),
+			RequestURL: reqOrigin.URL.String(),
 			DocsURL:    DocsBaseURL + "/endpoints" + TopHeadlinesPathPrefix,
 		}
 	}

@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,10 +17,9 @@ import (
 
 var originalClient = client
 
-// FakeParams ...
+// FakeParams mocks a newsclient.Params interface.
 type FakeParams string
 
-// Encode ...
 func (fp FakeParams) Encode() (string, error) {
 	return "sources=bloomberg,financial-times", nil
 }
@@ -32,19 +32,7 @@ type FakeClient struct {
 	IsValid       bool
 }
 
-func (f FakeClient) GetContextOrigin() context.Context {
-	return f.ContextOrigin
-}
-
-func (f FakeClient) GetRequestOrigin() *http.Request {
-	return f.RequestOrigin
-}
-
-func (f FakeClient) GetServiceEndpoint() newsclient.ServiceEndpoint {
-	return f.ServiceEndpoint
-}
-
-func (f FakeClient) GetTopHeadlines(p newsclient.Params) (*news.Response, error) {
+func (f FakeClient) TopHeadlines(_ context.Context, _ *http.Request, p newsclient.Params) (*news.Response, error) {
 	if f.IsValid {
 		return nil, errors.New("some error")
 	} else {
@@ -167,7 +155,9 @@ func TestFetchNews(t *testing.T) {
 	}
 
 	params := FakeParams(qp)
-	got, err := fetchNews(client, params)
+	ctx := context.Background()
+	r := httptest.NewRequest("GET", fmt.Sprintf("/test?%v", params), nil)
+	got, err := fetchNews(ctx, r, client, params)
 	if err != nil {
 		t.Errorf("fetchNews: expecting (%v, nil), got (%v, %v)", want, got, err)
 	}
@@ -184,7 +174,9 @@ func TestFetchNewsErrors(t *testing.T) {
 	defer teardown(t)
 
 	params := FakeParams(qp)
-	got, err := fetchNews(client, params)
+	ctx := context.Background()
+	r := httptest.NewRequest("GET", "/test", nil)
+	got, err := fetchNews(ctx, r, client, params)
 	if err == nil {
 		desc := "returns nil SuccessResponse when an error is encountered"
 		t.Errorf("%s: fetchNews expecting (nil, error), got (%v, %v)", desc, got, err)

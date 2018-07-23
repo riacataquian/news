@@ -22,7 +22,7 @@ type FakeClient struct {
 	IsValid       bool
 }
 
-func (f FakeClient) GetTopHeadlines(p Params) (*news.Response, error) {
+func (f FakeClient) TopHeadlines(_ context.Context, _ *http.Request, p Params) (*news.Response, error) {
 	if f.IsValid {
 		return &news.Response{
 			Status:       "200",
@@ -57,18 +57,6 @@ func (f FakeClient) GetTopHeadlines(p Params) (*news.Response, error) {
 	}
 
 	return nil, errors.New("some error")
-}
-
-func (f FakeClient) GetContextOrigin() context.Context {
-	return f.ContextOrigin
-}
-
-func (f FakeClient) GetRequestOrigin() *http.Request {
-	return f.RequestOrigin
-}
-
-func (f FakeClient) GetServiceEndpoint() ServiceEndpoint {
-	return f.ServiceEndpoint
 }
 
 func (f FakeClient) DispatchRequest(r *http.Request) (*news.Response, error) {
@@ -153,22 +141,8 @@ func setupStubServer(t *testing.T, isValid bool) *httptest.Server {
 	}))
 }
 
-func TestGetTopHeadlines(t *testing.T) {
+func TestTopHeadlines(t *testing.T) {
 	setupAPIKey(t)
-
-	server := setupStubServer(t, true)
-	defer server.Close()
-
-	ctx := context.Background()
-	r := httptest.NewRequest("GET", server.URL, nil)
-	client := FakeClient{
-		ServiceEndpoint: ServiceEndpoint{
-			URL: server.URL,
-		},
-		ContextOrigin: ctx,
-		RequestOrigin: r,
-		IsValid:       true,
-	}
 
 	want := &news.Response{
 		Status:       "200",
@@ -201,18 +175,30 @@ func TestGetTopHeadlines(t *testing.T) {
 		},
 	}
 
-	got, err := client.GetTopHeadlines(TopHeadlinesParams{Country: "us"})
+	server := setupStubServer(t, true)
+	defer server.Close()
+
+	client := FakeClient{
+		ServiceEndpoint: ServiceEndpoint{
+			URL: server.URL,
+		},
+		IsValid: true,
+	}
+
+	ctx := context.Background()
+	r := httptest.NewRequest("GET", server.URL, nil)
+	got, err := client.TopHeadlines(ctx, r, TopHeadlinesParams{Country: "us"})
 	if err != nil {
-		t.Errorf("GetTopHeadlines: want (%v, nil), got (%v, %v)", want, got, err)
+		t.Errorf("TopHeadlines: want (%v, nil), got (%v, %v)", want, got, err)
 	}
 
 	if diff := pretty.Compare(got, want); diff != "" {
 		desc := "returns a news.Response and nil error"
-		t.Errorf("%s: GetTopHeadlines diff: (-got +want)\n%s", desc, diff)
+		t.Errorf("%s: TopHeadlines diff: (-got +want)\n%s", desc, diff)
 	}
 }
 
-func TestGetTopHeadlinesErrors(t *testing.T) {
+func TestTopHeadlinesErrors(t *testing.T) {
 	err := os.Setenv("API_KEY", "this is a test api key")
 	if err != nil {
 		// TODO
@@ -256,12 +242,10 @@ func TestGetTopHeadlinesErrors(t *testing.T) {
 				ServiceEndpoint: ServiceEndpoint{
 					URL: server.URL,
 				},
-				ContextOrigin: ctx,
-				RequestOrigin: r,
 			}
-			got, err := client.GetTopHeadlines(test.params)
+			got, err := client.TopHeadlines(ctx, r, test.params)
 			if err == nil {
-				t.Errorf("%s: fetchNews want (nil, error), got (%v, %v)", test.desc, got, err)
+				t.Errorf("%s: TopHeadlines(_, _, %v) want (nil, error), got (%v, %v)", test.desc, test.params, got, err)
 			}
 		})
 	}
