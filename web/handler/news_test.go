@@ -17,6 +17,13 @@ import (
 
 var originalClient = client
 
+type config struct {
+	ctx         context.Context
+	req         *http.Request
+	queryParams string
+	isValid     bool
+}
+
 // FakeParams mocks a newsclient.Params interface.
 type FakeParams string
 
@@ -34,8 +41,6 @@ type FakeClient struct {
 
 func (f FakeClient) TopHeadlines(_ context.Context, _ *http.Request, p newsclient.Params) (*news.Response, error) {
 	if f.IsValid {
-		return nil, errors.New("some error")
-	} else {
 		return &news.Response{
 			Status:       "200",
 			TotalResults: 2,
@@ -67,6 +72,7 @@ func (f FakeClient) TopHeadlines(_ context.Context, _ *http.Request, p newsclien
 			},
 		}, nil
 	}
+	return nil, errors.New("some error")
 }
 
 func (f FakeClient) DispatchRequest(r *http.Request) (*news.Response, error) {
@@ -94,18 +100,16 @@ func (f FakeClient) DispatchRequest(r *http.Request) (*news.Response, error) {
 	return nil, errors.New("failed request")
 }
 
-func setupFakeClient(t *testing.T, queryParams string, isValid bool) FakeClient {
+func setupFakeClient(t *testing.T, conf config) FakeClient {
 	t.Helper()
 
-	ctx := context.Background()
-	r := httptest.NewRequest("GET", "/test?"+queryParams, nil)
 	return FakeClient{
 		ServiceEndpoint: newsclient.ServiceEndpoint{
 			URL: "test-url",
 		},
-		ContextOrigin: ctx,
-		RequestOrigin: r,
-		IsValid:       isValid,
+		ContextOrigin: conf.ctx,
+		RequestOrigin: conf.req,
+		IsValid:       conf.isValid,
 	}
 }
 
@@ -115,8 +119,14 @@ func teardown(t *testing.T) {
 }
 
 func TestFetchNews(t *testing.T) {
-	qp := "sources=bloomberg,financial-times"
-	client = setupFakeClient(t, qp, false)
+	q := "sources=bloomberg,financial-times"
+	conf := config{
+		ctx:         context.Background(),
+		req:         httptest.NewRequest("GET", fmt.Sprintf("/test?%s", q), nil),
+		queryParams: q,
+		isValid:     true,
+	}
+	client = setupFakeClient(t, conf)
 	defer teardown(t)
 
 	want := &SuccessResponse{
@@ -154,10 +164,7 @@ func TestFetchNews(t *testing.T) {
 		},
 	}
 
-	params := FakeParams(qp)
-	ctx := context.Background()
-	r := httptest.NewRequest("GET", fmt.Sprintf("/test?%v", params), nil)
-	got, err := fetchNews(ctx, r, client, params)
+	got, err := fetchNews(conf.ctx, conf.req, client, FakeParams(conf.queryParams))
 	if err != nil {
 		t.Errorf("fetchNews: expecting (%v, nil), got (%v, %v)", want, got, err)
 	}
@@ -169,14 +176,17 @@ func TestFetchNews(t *testing.T) {
 }
 
 func TestFetchNewsErrors(t *testing.T) {
-	qp := "sources=bloomberg,financial-times"
-	client = setupFakeClient(t, qp, true)
+	q := "sources=bloomberg,financial-times"
+	conf := config{
+		ctx:         context.Background(),
+		req:         httptest.NewRequest("GET", fmt.Sprintf("/test?%s", q), nil),
+		queryParams: q,
+		isValid:     false,
+	}
+	client = setupFakeClient(t, conf)
 	defer teardown(t)
 
-	params := FakeParams(qp)
-	ctx := context.Background()
-	r := httptest.NewRequest("GET", "/test", nil)
-	got, err := fetchNews(ctx, r, client, params)
+	got, err := fetchNews(conf.ctx, conf.req, client, FakeParams(conf.queryParams))
 	if err == nil {
 		desc := "returns nil SuccessResponse when an error is encountered"
 		t.Errorf("%s: fetchNews expecting (nil, error), got (%v, %v)", desc, got, err)
