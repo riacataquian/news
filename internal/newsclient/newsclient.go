@@ -53,7 +53,7 @@ type NewsClient struct {
 	RequestOrigin *http.Request
 }
 
-// lookupAndSetAuth ...
+// lookupAndSetAuth sets the env variable API_KEY in the supplied request.
 func lookupAndSetAuth(r *http.Request) error {
 	k, ok := os.LookupEnv("API_KEY")
 	if !ok {

@@ -30,11 +30,11 @@ func News(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
 		return nil, fmt.Errorf("error decoding params: %v", err)
 	}
 
-	return fetchNews(ctx, r, client, dst)
+	return fetchTopHeadlines(ctx, r, client, dst)
 }
 
-// fetchNews ...
-func fetchNews(ctx context.Context, r *http.Request, client newsclient.Client, params newsclient.Params) (*SuccessResponse, error) {
+// fetchTopHeadlines performs the request to the client given params.
+func fetchTopHeadlines(ctx context.Context, r *http.Request, client newsclient.Client, params newsclient.Params) (*SuccessResponse, error) {
 	news, err := client.TopHeadlines(ctx, r, params)
 	if err != nil {
 		return nil, err

@@ -14,19 +14,20 @@ import (
 	"github.com/riacataquian/news/internal/httperror"
 )
 
-// This file handles top headlines news.
+// This file handles querying and interacting with newsapi's top-headlines.
 
-// TopHeadlinesPathPrefix ...
+// TopHeadlinesPathPrefix is the top headlines endpoint prefix.
 var TopHeadlinesPathPrefix = "/top-headlines"
 
-// TopHeadlinesParams ...
-//
+// TopHeadlinesParams is the request parameters for top headlines endpoint.
 // All of which are optional parameters.
+// See Request Parameters > https://newsapi.org/docs/endpoints/top-headlines.
+//
 // It implements Params interface.
 type TopHeadlinesParams struct {
-	// It cannot be mixed with `sources` param.
+	// Country cannot be mixed with `sources` param.
 	Country string `schema:"country"`
-	// It cannot be mixed with `sources` param.
+	// Category cannot be mixed with `sources` param.
 	Category string `schema:"category"`
 	// Sources is a comma-separated sources.
 	Sources  string `schema:"sources"`
@@ -35,7 +36,13 @@ type TopHeadlinesParams struct {
 	Page     int    `schema:"page"`
 }
 
-// TopHeadlines ...
+// TopHeadlines dispatches an HTTP GET request to the newsapi.
+// It times out after 5 seconds.
+//
+// It looks up for an env variable API_KEY and when found, set it to the request's header,
+// it then encodes params and set is as the request's query parameter.
+//
+// Finally, it dispatches the request and encode the response accordingly.
 func (c NewsClient) TopHeadlines(ctxOrigin context.Context, reqOrigin *http.Request, params Params) (*news.Response, error) {
 	ctx, cancel := context.WithTimeout(ctxOrigin, 5*time.Second)
 	defer cancel()
@@ -48,6 +55,17 @@ func (c NewsClient) TopHeadlines(ctxOrigin context.Context, reqOrigin *http.Requ
 	// Requests to external services should timeout for 5 seconds.
 	req = req.WithContext(ctx)
 
+	// Find and set request's API_KEY header.
+	err = lookupAndSetAuth(req)
+	if err != nil {
+		return nil, &httperror.HTTPError{
+			Code:       http.StatusBadRequest,
+			Message:    err.Error(),
+			RequestURL: reqOrigin.URL.String(),
+			DocsURL:    DocsBaseURL + "/authentication",
+		}
+	}
+
 	// Encode query parameters from the request origin.
 	q, err := params.Encode()
 	if err != nil {
@@ -59,17 +77,6 @@ func (c NewsClient) TopHeadlines(ctxOrigin context.Context, reqOrigin *http.Requ
 		}
 	}
 	req.URL.RawQuery = q
-
-	// Find and set request's API_KEY header.
-	err = lookupAndSetAuth(req)
-	if err != nil {
-		return nil, &httperror.HTTPError{
-			Code:       http.StatusBadRequest,
-			Message:    err.Error(),
-			RequestURL: reqOrigin.URL.String(),
-			DocsURL:    DocsBaseURL + "/authentication",
-		}
-	}
 
 	// Dispatch request to news API.
 	resp, err := c.DispatchRequest(req)

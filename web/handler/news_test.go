@@ -118,7 +118,7 @@ func teardown(t *testing.T) {
 	client = originalClient
 }
 
-func TestFetchNews(t *testing.T) {
+func TestFetchTopHeadlines(t *testing.T) {
 	q := "sources=bloomberg,financial-times"
 	conf := config{
 		ctx:         context.Background(),
@@ -164,18 +164,19 @@ func TestFetchNews(t *testing.T) {
 		},
 	}
 
-	got, err := fetchNews(conf.ctx, conf.req, client, FakeParams(conf.queryParams))
+	params := FakeParams(conf.queryParams)
+	got, err := fetchTopHeadlines(conf.ctx, conf.req, client, params)
 	if err != nil {
-		t.Errorf("fetchNews: expecting (%v, nil), got (%v, %v)", want, got, err)
+		t.Errorf("fetchTopHeadlines(_, _, _, %v): expecting (%v, nil), got (%v, %v)", params, want, got, err)
 	}
 
 	if diff := pretty.Compare(got, want); diff != "" {
 		desc := "returns a SuccessResponse with correct Code and RequestURL"
-		t.Errorf("%s: fetchNews diff: (-got +want)\n%s", desc, diff)
+		t.Errorf("%s: fetchTopHeadlines(_, _, _, %v), diff: (-got +want)\n%s", desc, params, diff)
 	}
 }
 
-func TestFetchNewsErrors(t *testing.T) {
+func TestFetchTopHeadlinesErrors(t *testing.T) {
 	q := "sources=bloomberg,financial-times"
 	conf := config{
 		ctx:         context.Background(),
@@ -186,9 +187,10 @@ func TestFetchNewsErrors(t *testing.T) {
 	client = setupFakeClient(t, conf)
 	defer teardown(t)
 
-	got, err := fetchNews(conf.ctx, conf.req, client, FakeParams(conf.queryParams))
+	params := FakeParams(conf.queryParams)
+	got, err := fetchTopHeadlines(conf.ctx, conf.req, client, params)
 	if err == nil {
 		desc := "returns nil SuccessResponse when an error is encountered"
-		t.Errorf("%s: fetchNews expecting (nil, error), got (%v, %v)", desc, got, err)
+		t.Errorf("%s: fetchTopHeadlines(_, _, _, %v), expecting (nil, error), got (%v, %v)", desc, params, got, err)
 	}
 }

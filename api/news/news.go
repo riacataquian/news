@@ -1,4 +1,4 @@
-// Package news contains response mapping from https://newsapi.org.
+// Package news contains response mapping and helpers for https://newsapi.org.
 package news
 
 import "time"
