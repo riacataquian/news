@@ -1,17 +1,16 @@
-// Package news ...
-// TODO: Encode me to proto. For now, JSON will suffice.
+// Package news contains response mapping from https://newsapi.org.
 package news
 
 import "time"
 
-// Response ...
+// Response describes a succesful response from news API.
 type Response struct {
 	Status       string `json:"status"`
 	TotalResults int    `json:"totalResults"`
 	Articles     []News `json:"articles"`
 }
 
-// News ...
+// News describes a news object.
 type News struct {
 	Source      `json:"source"`
 	Author      string    `json:"author"`
@@ -22,13 +21,14 @@ type News struct {
 	PublishedAt time.Time `json:"publishedAt"`
 }
 
-// Source ...
+// Source describes a source object.
+// It is the news object's source.
 type Source struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
 
-// ErrorResponse ...
+// ErrorResponse describes a failing response from news API.
 //
 // It satisfies the error interface.
 type ErrorResponse struct {
