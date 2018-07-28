@@ -367,7 +367,10 @@ func TestEncodeErrors(t *testing.T) {
 		},
 		{
 			desc: "category can't be mixed with sources param",
-			in:   Params{Category: "technology", Sources: "the-times-of-india"},
+			in:   Params{Category: "technology", Sources: "the-times-of-india"}},
+		{
+			desc: "pageSize exceeded the maxPageSize",
+			in:   Params{PageSize: 500, Category: "technology", Sources: "the-times-of-india"},
 		},
 	}
 
@@ -375,7 +378,7 @@ func TestEncodeErrors(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			got, err := test.in.Encode()
 			if err == nil {
-				t.Errorf("Encode: want (nil, error), got (%v, %v)", got, err)
+				t.Errorf("%s: (%v).Encode(): want (nil, error), got (%v, %v)", test.desc, test.in, got, err)
 			}
 		})
 	}

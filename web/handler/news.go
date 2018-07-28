@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/riacataquian/news/internal/newsclient"
 	"github.com/riacataquian/news/internal/newsclient/headlines"
@@ -21,13 +22,13 @@ var client newsclient.Client
 func List(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
 	r.ParseForm()
 
-	client = headlines.Client{
+	client = list.Client{
 		ServiceEndpoint: newsclient.ServiceEndpoint{
 			URL: list.Endpoint,
 		},
 	}
 
-	dst := new(headlines.Params)
+	dst := new(list.Params)
 	err := schema.NewDecoder().Decode(dst, r.Form)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding params: %v", err)
@@ -62,10 +63,28 @@ func fetch(ctx context.Context, r *http.Request, client newsclient.Client, param
 	if err != nil {
 		return nil, err
 	}
+	resp := &SuccessResponse{Data: news}
 
-	return &SuccessResponse{
-		Code:       http.StatusOK,
-		RequestURL: r.URL.String(),
-		Data:       news,
-	}, nil
+	qp := r.URL.Query()
+	ps := qp.Get("pageSize")
+	if ps != "" {
+		count, err := strconv.Atoi(ps)
+		if err != nil {
+			return nil, fmt.Errorf("invalid page size value: %v", ps)
+		}
+		resp.Count = count
+	}
+
+	p := qp.Get("page")
+	if p != "" {
+		page, err := strconv.Atoi(p)
+		if err != nil {
+			return nil, fmt.Errorf("invalid page value: %v", p)
+		}
+		resp.Page = page
+	}
+
+	resp.Code = http.StatusOK
+	resp.RequestURL = r.URL.String()
+	return resp, nil
 }

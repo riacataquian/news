@@ -20,13 +20,6 @@ var (
 
 	// ErrMissingAPIKey is the error message for missing API key.
 	ErrMissingAPIKey = "missing API key in the request header or parameters"
-
-	// ErrMixParams is the error message for mixing parameters that shouldn't be mixed.
-	// See Request Parameters > https://newsapi.org/docs/endpoints/top-headlines.
-	ErrMixParams = "mixing `sources` with the `country` and `category` params"
-
-	// ErrNoRequiredParams is the error message if no parameter is present in the request.
-	ErrNoRequiredParams = "required parameters are missing: sources, q, language, country, category."
 )
 
 // Params describes a Client's parameters.

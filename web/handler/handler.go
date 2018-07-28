@@ -8,9 +8,14 @@ import (
 
 // SuccessResponse describes a successful HTTP response.
 type SuccessResponse struct {
-	Code       int         `json:"code"`
-	RequestURL string      `json:"requestURL"`
-	Data       interface{} `json:"data"`
+	Code       int    `json:"code"`
+	RequestURL string `json:"requestURL"`
+	// Count is the queried result count.
+	Count int `json:"count"`
+	// Page is the current result's page.
+	Page int `json:"page"`
+	// Data is the actual response from newsapi.
+	Data interface{} `json:"data"`
 }
 
 // Func describes a function that handles HTTP requests and responses.

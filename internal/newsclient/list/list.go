@@ -19,6 +19,11 @@ import (
 // PathPrefix is newsapi's everything endpoint prefix.
 const PathPrefix = "/everything"
 
+const maxPageSize = 100
+
+// ErrNoRequiredParams is the error message if no request parameter is present in the request.
+const ErrNoRequiredParams = "required parameters are missing: query, sources, domains."
+
 // Endpoint is the request endpoint.
 var Endpoint = newsclient.APIBaseURL + PathPrefix
 
@@ -79,7 +84,7 @@ type Params struct {
 	Page     int                 `schema:"page"`
 }
 
-// Client is an HTTP news API client.
+// Client is an HTTP newsapi client.
 // It implements the newsclient.Client interface.
 type Client struct {
 	newsclient.ServiceEndpoint
@@ -95,13 +100,18 @@ type Client struct {
 //
 // Finally, it dispatches the request by calling DispatchRequest method
 // then encode the response accordingly.
-func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params Params) (*news.Response, error) {
+func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params newsclient.Params) (*news.Response, error) {
 	ctx, cancel := context.WithTimeout(ctxOrigin, 5*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequest(http.MethodGet, c.URL, nil)
 	if err != nil {
-		return nil, err
+		return nil, &httperror.HTTPError{
+			Code:       http.StatusBadRequest,
+			Message:    fmt.Sprintf("getting news list: %v", err),
+			RequestURL: reqOrigin.URL.String(),
+			DocsURL:    newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
+		}
 	}
 
 	// Requests to external services should timeout for 5 seconds.
@@ -130,7 +140,7 @@ func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params P
 	}
 	req.URL.RawQuery = q
 
-	// Dispatch request to news API.
+	// Dispatch request to newsapi.
 	resp, err := c.DispatchRequest(req)
 	if err != nil {
 		return nil, &httperror.HTTPError{
@@ -141,7 +151,7 @@ func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params P
 		}
 	}
 
-	return resp, err
+	return resp, nil
 }
 
 // DispatchRequest dispatches given r http.Request.
@@ -214,7 +224,7 @@ func (p Params) Encode() (string, error) {
 	// At this point, after all required parameters are evaluated and none is present,
 	// return an ErrNoRequiredParams error.
 	if q.Encode() == "" {
-		return "", errors.New(newsclient.ErrNoRequiredParams)
+		return "", errors.New(ErrNoRequiredParams)
 	}
 
 	if p.Page != 0 {
@@ -223,6 +233,10 @@ func (p Params) Encode() (string, error) {
 	}
 
 	if p.PageSize != 0 {
+		if p.PageSize > maxPageSize {
+			return "", fmt.Errorf("the maximum page size is %d, you requested %d", maxPageSize, p.PageSize)
+		}
+
 		p := strconv.Itoa(p.PageSize)
 		q.Add("pageSize", p)
 	}

@@ -19,6 +19,17 @@ import (
 // PathPrefix is the newsapi's top headlines endpoint prefix.
 const PathPrefix = "/top-headlines"
 
+const maxPageSize = 100
+
+const (
+	// ErrMixParams is the error message for mixing parameters that shouldn't be mixed.
+	// See Request Parameters > https://newsapi.org/docs/endpoints/top-headlines.
+	ErrMixParams = "mixing `sources` with the `country` and `category` params"
+
+	// ErrNoRequiredParams is the error message if no request parameter is present in the request.
+	ErrNoRequiredParams = "required parameters are missing: sources, query, language, country, category."
+)
+
 // Endpoint is top headlines' request endpoint.
 var Endpoint = newsclient.APIBaseURL + PathPrefix
 
@@ -60,7 +71,12 @@ func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params n
 
 	req, err := http.NewRequest(http.MethodGet, c.URL, nil)
 	if err != nil {
-		return nil, err
+		return nil, &httperror.HTTPError{
+			Code:       http.StatusBadRequest,
+			Message:    fmt.Sprintf("encoding query parameters: %v", err),
+			RequestURL: reqOrigin.URL.String(),
+			DocsURL:    newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
+		}
 	}
 
 	// Requests to external services should timeout for 5 seconds.
@@ -100,7 +116,7 @@ func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params n
 		}
 	}
 
-	return resp, err
+	return resp, nil
 }
 
 // DispatchRequest dispatches given r http.Request.
@@ -147,7 +163,7 @@ func (p Params) Encode() (string, error) {
 
 	if p.Country != "" {
 		if sources != "" {
-			return "", errors.New(newsclient.ErrMixParams)
+			return "", errors.New(ErrMixParams)
 		}
 
 		q.Add("country", p.Country)
@@ -155,7 +171,7 @@ func (p Params) Encode() (string, error) {
 
 	if p.Category != "" {
 		if sources != "" {
-			return "", errors.New(newsclient.ErrMixParams)
+			return "", errors.New(ErrMixParams)
 		}
 
 		q.Add("category", p.Category)
@@ -164,7 +180,7 @@ func (p Params) Encode() (string, error) {
 	// At this point, after all required parameters are evaluated and none is present,
 	// return an ErrNoRequiredParams error.
 	if q.Encode() == "" {
-		return "", errors.New(newsclient.ErrNoRequiredParams)
+		return "", errors.New(ErrNoRequiredParams)
 	}
 
 	if p.Page != 0 {
@@ -173,6 +189,10 @@ func (p Params) Encode() (string, error) {
 	}
 
 	if p.PageSize != 0 {
+		if p.PageSize > maxPageSize {
+			return "", fmt.Errorf("the maximum page size is %d, you requested %d", maxPageSize, p.PageSize)
+		}
+
 		p := strconv.Itoa(p.PageSize)
 		q.Add("pageSize", p)
 	}

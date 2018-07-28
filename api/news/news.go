@@ -9,7 +9,7 @@ import "time"
 // Response describes a successful response from newsapi.
 type Response struct {
 	Status string `json:"status"`
-	// TotalResults are the total count of results per request.
+	// TotalResults are the total count of queryable results.
 	// Use page parameter to page through the results.
 	TotalResults int    `json:"totalResults"`
 	Articles     []News `json:"articles"`

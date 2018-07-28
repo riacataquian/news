@@ -342,3 +342,12 @@ func TestEncode(t *testing.T) {
 		t.Errorf("Encode: want (%v, nil), got (%v, %v)", want, got, err)
 	}
 }
+
+func TestEncodeErrors(t *testing.T) {
+	in := Params{PageSize: 500, Language: EN}
+	got, err := in.Encode()
+	if err == nil {
+		desc := "pageSize exceeded the maxPageSize"
+		t.Errorf("%s: (%v).Encode(): want (nil, error), got (%v, %v)", desc, in, got, err)
+	}
+}
