@@ -54,10 +54,10 @@ type Params struct {
 	Domains string `schema:"domains"`
 	// From is the date and optional time for the oldest article allowed.
 	// Expects an ISO format, i.e., 2018-07-28 or 2018-07-28T14:28:41.
-	From *time.Time `schema:"from"`
+	From string `schema:"from"`
 	// To is the date and optional time for the newest article allowed.
 	// Expects an ISO format, i.e., 2018-07-28 or 2018-07-28T14:28:41.
-	To *time.Time `schema:"To"`
+	To string `schema:"To"`
 	// Language is a 2-letter IS0-639-1 code of the language to get the news for.
 	// See Request Parameters > language > https://newsapi.org/docs/endpoints/everything.
 	Language string  `schema:"language"` // defaults to all languages returned.
@@ -184,13 +184,13 @@ func (p Params) Encode() (string, error) {
 	}
 
 	from := p.From
-	if from != nil {
-		q.Add("from", from.Format(time.RFC3339))
+	if from != "" {
+		q.Add("from", from)
 	}
 
 	to := p.To
-	if to != nil {
-		q.Add("to", to.Format(time.RFC3339))
+	if to != "" {
+		q.Add("to", to)
 	}
 
 	language := p.Language
