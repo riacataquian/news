@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-// SuccessResponse describes a sucessful HTTP response.
+// SuccessResponse describes a successful HTTP response.
 type SuccessResponse struct {
 	Code       int         `json:"code"`
 	RequestURL string      `json:"requestURL"`

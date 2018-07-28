@@ -3,7 +3,7 @@ package news
 
 import "time"
 
-// Response describes a succesful response from news API.
+// Response describes a successful response from news API.
 type Response struct {
 	Status       string `json:"status"`
 	TotalResults int    `json:"totalResults"`
