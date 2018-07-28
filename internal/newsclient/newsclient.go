@@ -45,16 +45,8 @@ type ServiceEndpoint struct {
 	URL string
 }
 
-// NewsClient is an HTTP news API client.
-// It implements the Client interface.
-type NewsClient struct {
-	ServiceEndpoint
-	ContextOrigin context.Context
-	RequestOrigin *http.Request
-}
-
-// lookupAndSetAuth sets the env variable API_KEY in the supplied request.
-func lookupAndSetAuth(r *http.Request) error {
+// LookupAndSetAuth sets the env variable API_KEY in the supplied request.
+func LookupAndSetAuth(r *http.Request) error {
 	k, ok := os.LookupEnv("API_KEY")
 	if !ok {
 		return errors.New(ErrMissingAPIKey)

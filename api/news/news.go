@@ -23,7 +23,7 @@ type News struct {
 	Description string    `json:"description"`
 	URL         string    `json:"url"`
 	ImageURL    string    `json:"urlToImage"`
-	PublishedAt time.Time `json:"publishedAt"` // in UTC.
+	PublishedAt time.Time `json:"publishedAt"` // in UTC format.
 }
 
 // Source describes a news source.
