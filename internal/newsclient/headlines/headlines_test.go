@@ -1,4 +1,4 @@
-package newsclient
+package headlines
 
 import (
 	"context"
@@ -12,17 +12,18 @@ import (
 
 	"github.com/kylelemons/godebug/pretty"
 	"github.com/riacataquian/news/api/news"
+	"github.com/riacataquian/news/internal/newsclient"
 )
 
 // FakeClient mocks a Client interface.
 type FakeClient struct {
-	ServiceEndpoint
+	newsclient.ServiceEndpoint
 	ContextOrigin context.Context
 	RequestOrigin *http.Request
 	IsValid       bool
 }
 
-func (f FakeClient) TopHeadlines(_ context.Context, _ *http.Request, p Params) (*news.Response, error) {
+func (f FakeClient) Get(_ context.Context, _ *http.Request, p Params) (*news.Response, error) {
 	if f.IsValid {
 		return &news.Response{
 			Status:       "200",
@@ -141,7 +142,7 @@ func setupStubServer(t *testing.T, isValid bool) *httptest.Server {
 	}))
 }
 
-func TestTopHeadlines(t *testing.T) {
+func TestGet(t *testing.T) {
 	setupAPIKey(t)
 
 	want := &news.Response{
@@ -179,7 +180,7 @@ func TestTopHeadlines(t *testing.T) {
 	defer server.Close()
 
 	client := FakeClient{
-		ServiceEndpoint: ServiceEndpoint{
+		ServiceEndpoint: newsclient.ServiceEndpoint{
 			URL: server.URL,
 		},
 		IsValid: true,
@@ -187,46 +188,46 @@ func TestTopHeadlines(t *testing.T) {
 
 	ctx := context.Background()
 	r := httptest.NewRequest("GET", server.URL, nil)
-	got, err := client.TopHeadlines(ctx, r, TopHeadlinesParams{Country: "us"})
+	got, err := client.Get(ctx, r, Params{Country: "us"})
 	if err != nil {
-		t.Errorf("TopHeadlines: want (%v, nil), got (%v, %v)", want, got, err)
+		t.Errorf("Get: want (%v, nil), got (%v, %v)", want, got, err)
 	}
 
 	if diff := pretty.Compare(got, want); diff != "" {
 		desc := "returns a news.Response and nil error"
-		t.Errorf("%s: TopHeadlines diff: (-got +want)\n%s", desc, diff)
+		t.Errorf("%s: Get diff: (-got +want)\n%s", desc, diff)
 	}
 }
 
-func TestTopHeadlinesErrors(t *testing.T) {
+func TestGetErrors(t *testing.T) {
 	err := os.Setenv("API_KEY", "this is a test api key")
 	if err != nil {
-		t.Logf("TopHeadlines: setting up an API_KEY: %v", err)
+		t.Logf("Get: setting up an API_KEY: %v", err)
 	}
 
 	tests := []struct {
 		desc          string
 		isServerValid bool
 		isClientValid bool
-		params        TopHeadlinesParams
+		params        Params
 	}{
 		{
 			desc:          "returns an error when server errored",
 			isServerValid: false,
 			isClientValid: true,
-			params:        TopHeadlinesParams{Country: "us"},
+			params:        Params{Country: "us"},
 		},
 		{
 			desc:          "returns an error when client errored",
 			isServerValid: true,
 			isClientValid: false,
-			params:        TopHeadlinesParams{Country: "us"},
+			params:        Params{Country: "us"},
 		},
 		{
 			desc:          "returns an error when params errored",
 			isServerValid: true,
 			isClientValid: true,
-			params:        TopHeadlinesParams{},
+			params:        Params{},
 		},
 	}
 
@@ -238,13 +239,13 @@ func TestTopHeadlinesErrors(t *testing.T) {
 			r := httptest.NewRequest("GET", server.URL, nil)
 			ctx := context.Background()
 			client := FakeClient{
-				ServiceEndpoint: ServiceEndpoint{
+				ServiceEndpoint: newsclient.ServiceEndpoint{
 					URL: server.URL,
 				},
 			}
-			got, err := client.TopHeadlines(ctx, r, test.params)
+			got, err := client.Get(ctx, r, test.params)
 			if err == nil {
-				t.Errorf("%s: TopHeadlines(_, _, %v) want (nil, error), got (%v, %v)", test.desc, test.params, got, err)
+				t.Errorf("%s: Get(_, _, %v) want (nil, error), got (%v, %v)", test.desc, test.params, got, err)
 			}
 		})
 	}
@@ -290,7 +291,7 @@ func TestDispatchRequest(t *testing.T) {
 		t.Fatalf("DispatchRequest(_): error creating a new request: %v", err)
 	}
 
-	got, err := NewsClient{}.DispatchRequest(r)
+	got, err := Client{}.DispatchRequest(r)
 	if err != nil {
 		t.Errorf("DispatchRequest(_): want (%v, nil), got (%v, %v)", want, got, err)
 	}
@@ -316,7 +317,7 @@ func TestDispatchRequestErrors(t *testing.T) {
 		t.Fatalf("DispatchRequest(_): error creating a new request: %v", err)
 	}
 
-	got, err := NewsClient{}.DispatchRequest(r)
+	got, err := Client{}.DispatchRequest(r)
 	if err == nil {
 		t.Errorf("DispatchRequest(_): want (nil, error), got (%v, %v)", got, err)
 	}
@@ -330,17 +331,17 @@ func TestDispatchRequestErrors(t *testing.T) {
 func TestEncode(t *testing.T) {
 	tests := []struct {
 		desc string
-		in   TopHeadlinesParams
+		in   Params
 		want string
 	}{
 		{
 			desc: "returns the encoded params",
-			in:   TopHeadlinesParams{Country: "us"},
+			in:   Params{Country: "us"},
 			want: "country=us",
 		},
 		{
 			desc: "returns the correct query params",
-			in:   TopHeadlinesParams{Country: "us", Query: "bitcoin", PageSize: 50, Page: 2},
+			in:   Params{Country: "us", Query: "bitcoin", PageSize: 50, Page: 2},
 			want: "country=us&page=2&pageSize=50&q=bitcoin",
 		},
 	}
@@ -358,15 +359,18 @@ func TestEncode(t *testing.T) {
 func TestEncodeErrors(t *testing.T) {
 	tests := []struct {
 		desc string
-		in   TopHeadlinesParams
+		in   Params
 	}{
 		{
 			desc: "country can't be mixed with sources param",
-			in:   TopHeadlinesParams{Country: "us", Sources: "the-times-of-india"},
+			in:   Params{Country: "us", Sources: "the-times-of-india"},
 		},
 		{
 			desc: "category can't be mixed with sources param",
-			in:   TopHeadlinesParams{Category: "technology", Sources: "the-times-of-india"},
+			in:   Params{Category: "technology", Sources: "the-times-of-india"}},
+		{
+			desc: "pageSize exceeded the maxPageSize",
+			in:   Params{PageSize: 500, Category: "technology", Sources: "the-times-of-india"},
 		},
 	}
 
@@ -374,7 +378,7 @@ func TestEncodeErrors(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			got, err := test.in.Encode()
 			if err == nil {
-				t.Errorf("Encode: want (nil, error), got (%v, %v)", got, err)
+				t.Errorf("%s: (%v).Encode(): want (nil, error), got (%v, %v)", test.desc, test.in, got, err)
 			}
 		})
 	}

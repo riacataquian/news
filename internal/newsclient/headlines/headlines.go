@@ -1,4 +1,5 @@
-package newsclient
+// Package headlines handles querying and interacting with newsapi's top-headlines endpoint.
+package headlines
 
 import (
 	"context"
@@ -12,57 +13,83 @@ import (
 
 	"github.com/riacataquian/news/api/news"
 	"github.com/riacataquian/news/internal/httperror"
+	"github.com/riacataquian/news/internal/newsclient"
 )
 
-// This file handles querying and interacting with newsapi's top-headlines.
+// PathPrefix is the newsapi's top headlines endpoint prefix.
+const PathPrefix = "/top-headlines"
 
-// TopHeadlinesPathPrefix is the top headlines endpoint prefix.
-var TopHeadlinesPathPrefix = "/top-headlines"
+const maxPageSize = 100
 
-// TopHeadlinesParams is the request parameters for top headlines endpoint.
-// All of which are optional parameters.
+const (
+	// ErrMixParams is the error message for mixing parameters that shouldn't be mixed.
+	// See Request Parameters > https://newsapi.org/docs/endpoints/top-headlines.
+	ErrMixParams = "mixing `sources` with the `country` and `category` params"
+
+	// ErrNoRequiredParams is the error message if no request parameter is present in the request.
+	ErrNoRequiredParams = "required parameters are missing: sources, query, language, country, category."
+)
+
+// Endpoint is top headlines' request endpoint.
+var Endpoint = newsclient.APIBaseURL + PathPrefix
+
+// Params is the request parameters for top headlines endpoint.
+// Requests should have at least one of these parameters.
 // See Request Parameters > https://newsapi.org/docs/endpoints/top-headlines.
 //
-// It implements Params interface.
-type TopHeadlinesParams struct {
+// It implements newsclient.Params interface.
+type Params struct {
 	// Country cannot be mixed with `sources` param.
 	Country string `schema:"country"`
 	// Category cannot be mixed with `sources` param.
 	Category string `schema:"category"`
-	// Sources is a comma-separated sources.
-	Sources  string `schema:"sources"`
+	// Sources is a comma-separated news sources.
+	// See https://newsapi.org/sources for options.
+	Sources string `schema:"sources"`
+	// Query are keywords or phrase to search for.
 	Query    string `schema:"query"`
 	PageSize int    `schema:"pageSize"` // default: 20, maximum: 100
 	Page     int    `schema:"page"`
 }
 
-// TopHeadlines dispatches an HTTP GET request to the newsapi.
-// It times out after 5 seconds.
+// Client is an HTTP news API client.
+// It implements the newsclient.Client interface.
+type Client struct {
+	newsclient.ServiceEndpoint
+	ContextOrigin context.Context
+	RequestOrigin *http.Request
+}
+
+// Get dispatches an HTTP GET request to the newsapi's top headlines endpoint.
+// It times out after 5 seconds. // // It looks up for an env variable API_KEY and when found, set it to the request's header, // it then encodes params and set is as the request's query parameter.
 //
-// It looks up for an env variable API_KEY and when found, set it to the request's header,
-// it then encodes params and set is as the request's query parameter.
-//
-// Finally, it dispatches the request and encode the response accordingly.
-func (c NewsClient) TopHeadlines(ctxOrigin context.Context, reqOrigin *http.Request, params Params) (*news.Response, error) {
+// Finally, it dispatches the request by calling DispatchRequest method
+// then encode the response accordingly.
+func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params newsclient.Params) (*news.Response, error) {
 	ctx, cancel := context.WithTimeout(ctxOrigin, 5*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequest(http.MethodGet, c.URL, nil)
 	if err != nil {
-		return nil, err
+		return nil, &httperror.HTTPError{
+			Code:       http.StatusBadRequest,
+			Message:    fmt.Sprintf("encoding query parameters: %v", err),
+			RequestURL: reqOrigin.URL.String(),
+			DocsURL:    newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
+		}
 	}
 
 	// Requests to external services should timeout for 5 seconds.
 	req = req.WithContext(ctx)
 
 	// Find and set request's API_KEY header.
-	err = lookupAndSetAuth(req)
+	err = newsclient.LookupAndSetAuth(req)
 	if err != nil {
 		return nil, &httperror.HTTPError{
 			Code:       http.StatusBadRequest,
 			Message:    err.Error(),
 			RequestURL: reqOrigin.URL.String(),
-			DocsURL:    DocsBaseURL + "/authentication",
+			DocsURL:    newsclient.DocsBaseURL + "/authentication",
 		}
 	}
 
@@ -73,7 +100,7 @@ func (c NewsClient) TopHeadlines(ctxOrigin context.Context, reqOrigin *http.Requ
 			Code:       http.StatusBadRequest,
 			Message:    fmt.Sprintf("encoding query parameters: %v", err),
 			RequestURL: reqOrigin.URL.String(),
-			DocsURL:    DocsBaseURL + "/endpoints" + TopHeadlinesPathPrefix,
+			DocsURL:    newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
 		}
 	}
 	req.URL.RawQuery = q
@@ -85,18 +112,18 @@ func (c NewsClient) TopHeadlines(ctxOrigin context.Context, reqOrigin *http.Requ
 			Code:       http.StatusBadRequest,
 			Message:    fmt.Sprintf("fetching top headlines: %v", err),
 			RequestURL: reqOrigin.URL.String(),
-			DocsURL:    DocsBaseURL + "/endpoints" + TopHeadlinesPathPrefix,
+			DocsURL:    newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
 		}
 	}
 
-	return resp, err
+	return resp, nil
 }
 
 // DispatchRequest dispatches given r http.Request.
 //
 // It encodes and return a news.ErrorResponse when an error is encountered.
 // Returns news.Response otherwise for successful requests.
-func (c NewsClient) DispatchRequest(r *http.Request) (*news.Response, error) {
+func (c Client) DispatchRequest(r *http.Request) (*news.Response, error) {
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
 		return nil, err
@@ -119,10 +146,10 @@ func (c NewsClient) DispatchRequest(r *http.Request) (*news.Response, error) {
 	return &res, nil
 }
 
-// Encode encodes a p TopHeadlinesParams into a query string format. (e.g., foo=bar&wat=lol)
+// Encode encodes a p Params into a query string format. (e.g., foo=bar&wat=lol)
 //
 // It implements Params interface.
-func (p TopHeadlinesParams) Encode() (string, error) {
+func (p Params) Encode() (string, error) {
 	q := url.Values{}
 
 	if p.Query != "" {
@@ -162,6 +189,10 @@ func (p TopHeadlinesParams) Encode() (string, error) {
 	}
 
 	if p.PageSize != 0 {
+		if p.PageSize > maxPageSize {
+			return "", fmt.Errorf("the maximum page size is %d, you requested %d", maxPageSize, p.PageSize)
+		}
+
 		p := strconv.Itoa(p.PageSize)
 		q.Add("pageSize", p)
 	}

@@ -39,7 +39,7 @@ type FakeClient struct {
 	IsValid       bool
 }
 
-func (f FakeClient) TopHeadlines(_ context.Context, _ *http.Request, p newsclient.Params) (*news.Response, error) {
+func (f FakeClient) Get(_ context.Context, _ *http.Request, p newsclient.Params) (*news.Response, error) {
 	if f.IsValid {
 		return &news.Response{
 			Status:       "200",
@@ -118,7 +118,7 @@ func teardown(t *testing.T) {
 	client = originalClient
 }
 
-func TestFetchTopHeadlines(t *testing.T) {
+func TestFetch(t *testing.T) {
 	q := "sources=bloomberg,financial-times"
 	conf := config{
 		ctx:         context.Background(),
@@ -165,18 +165,18 @@ func TestFetchTopHeadlines(t *testing.T) {
 	}
 
 	params := FakeParams(conf.queryParams)
-	got, err := fetchTopHeadlines(conf.ctx, conf.req, client, params)
+	got, err := fetch(conf.ctx, conf.req, client, params)
 	if err != nil {
-		t.Errorf("fetchTopHeadlines(_, _, _, %v): expecting (%v, nil), got (%v, %v)", params, want, got, err)
+		t.Errorf("fetch(_, _, _, %v): expecting (%v, nil), got (%v, %v)", params, want, got, err)
 	}
 
 	if diff := pretty.Compare(got, want); diff != "" {
 		desc := "returns a SuccessResponse with correct Code and RequestURL"
-		t.Errorf("%s: fetchTopHeadlines(_, _, _, %v), diff: (-got +want)\n%s", desc, params, diff)
+		t.Errorf("%s: fetch(_, _, _, %v), diff: (-got +want)\n%s", desc, params, diff)
 	}
 }
 
-func TestFetchTopHeadlinesErrors(t *testing.T) {
+func TestFetchErrors(t *testing.T) {
 	q := "sources=bloomberg,financial-times"
 	conf := config{
 		ctx:         context.Background(),
@@ -188,9 +188,9 @@ func TestFetchTopHeadlinesErrors(t *testing.T) {
 	defer teardown(t)
 
 	params := FakeParams(conf.queryParams)
-	got, err := fetchTopHeadlines(conf.ctx, conf.req, client, params)
+	got, err := fetch(conf.ctx, conf.req, client, params)
 	if err == nil {
 		desc := "returns nil SuccessResponse when an error is encountered"
-		t.Errorf("%s: fetchTopHeadlines(_, _, _, %v), expecting (nil, error), got (%v, %v)", desc, params, got, err)
+		t.Errorf("%s: fetch(_, _, _, %v), expecting (nil, error), got (%v, %v)", desc, params, got, err)
 	}
 }
