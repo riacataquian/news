@@ -188,7 +188,7 @@ func TestGet(t *testing.T) {
 
 	ctx := context.Background()
 	r := httptest.NewRequest("GET", server.URL, nil)
-	got, err := client.Get(ctx, r, Params{SortBy: Relevancy, Language: EN})
+	got, err := client.Get(ctx, r, Params{SortBy: Relevancy, Language: "en"})
 	if err != nil {
 		t.Errorf("Get: want (%v, nil), got (%v, %v)", want, got, err)
 	}
@@ -215,13 +215,13 @@ func TestGetErrors(t *testing.T) {
 			desc:          "returns an error when server errored",
 			isServerValid: false,
 			isClientValid: true,
-			params:        Params{SortBy: Relevancy, Language: EN},
+			params:        Params{SortBy: Relevancy, Language: "en"},
 		},
 		{
 			desc:          "returns an error when client errored",
 			isServerValid: true,
 			isClientValid: false,
-			params:        Params{SortBy: Relevancy, Language: EN},
+			params:        Params{SortBy: Relevancy, Language: "en"},
 		},
 		{
 			desc:          "returns an error when params errored",
@@ -334,7 +334,7 @@ func TestEncode(t *testing.T) {
 		Sources:  "some-source1,some-source2",
 		Domains:  "some-domain1,some-domain2",
 		SortBy:   Popularity,
-		Language: EN,
+		Language: "en",
 	}
 	want := "domains=some-domain1%2Csome-domain2&language=en&q=some-query&sortBy=popularity&sources=some-source1%2Csome-source2"
 	got, err := in.Encode()
@@ -344,7 +344,7 @@ func TestEncode(t *testing.T) {
 }
 
 func TestEncodeErrors(t *testing.T) {
-	in := Params{PageSize: 500, Language: EN}
+	in := Params{PageSize: 500, Language: "en"}
 	got, err := in.Encode()
 	if err == nil {
 		desc := "pageSize exceeded the maxPageSize"

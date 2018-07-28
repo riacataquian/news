@@ -39,26 +39,6 @@ const (
 	PublishedAt Sorting = "publishedAt"
 )
 
-// Language is a 2-letter IS0-639-1 code of the language to get the news for.
-type Language string
-
-const (
-	AR Language = "ar"
-	DE Language = "de"
-	EN Language = "en"
-	ES Language = "es"
-	FR Language = "fr"
-	HE Language = "he"
-	IT Language = "it"
-	NL Language = "nl"
-	NO Language = "no"
-	PT Language = "pt"
-	RU Language = "ru"
-	SE Language = "se"
-	UD Language = "ud"
-	ZH Language = "zh"
-)
-
 // Params is the request parameters for list news request.
 // Requests should have at least one of these parameters.
 // See Request Parameters > https://newsapi.org/docs/endpoints/everything.
@@ -77,11 +57,13 @@ type Params struct {
 	From *time.Time `schema:"from"`
 	// To is the date and optional time for the newest article allowed.
 	// Expects an ISO format, i.e., 2018-07-28 or 2018-07-28T14:28:41.
-	To       *time.Time          `schema:"To"`
-	Language `schema:"language"` // defaults to all languages returned.
-	SortBy   Sorting             `schema:"sortBy"`   // defaults to publishedAt.
-	PageSize int                 `schema:"pageSize"` // default: 20, maximum: 100
-	Page     int                 `schema:"page"`
+	To *time.Time `schema:"To"`
+	// Language is a 2-letter IS0-639-1 code of the language to get the news for.
+	// See Request Parameters > language > https://newsapi.org/docs/endpoints/everything.
+	Language string  `schema:"language"` // defaults to all languages returned.
+	SortBy   Sorting `schema:"sortBy"`   // defaults to publishedAt.
+	PageSize int     `schema:"pageSize"` // default: 20, maximum: 100
+	Page     int     `schema:"page"`
 }
 
 // Client is an HTTP newsapi client.
