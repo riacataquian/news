@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/riacataquian/news/internal/newsclient"
-	"github.com/riacataquian/news/internal/newsclient/everything"
 	"github.com/riacataquian/news/internal/newsclient/headlines"
+	"github.com/riacataquian/news/internal/newsclient/list"
 
 	"github.com/gorilla/schema"
 )
@@ -23,7 +23,7 @@ func List(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
 
 	client = headlines.Client{
 		ServiceEndpoint: newsclient.ServiceEndpoint{
-			URL: everything.Endpoint,
+			URL: list.Endpoint,
 		},
 	}
 

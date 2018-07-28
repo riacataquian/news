@@ -1,5 +1,5 @@
-// Package everything handles querying and interacting with newsapi's everything endpoint.
-package everything
+// Package list handles querying and interacting with newsapi's everything endpoint.
+package list
 
 import (
 	"context"
@@ -19,7 +19,7 @@ import (
 // PathPrefix is newsapi's everything endpoint prefix.
 const PathPrefix = "/everything"
 
-// Endpoint is everythings' request endpoint.
+// Endpoint is the request endpoint.
 var Endpoint = newsclient.APIBaseURL + PathPrefix
 
 // Sorting is the order to sort articles in.
@@ -54,7 +54,7 @@ const (
 	ZH Language = "zh"
 )
 
-// Params is the request parameters for everything news request.
+// Params is the request parameters for list news request.
 // Requests should have at least one of these parameters.
 // See Request Parameters > https://newsapi.org/docs/endpoints/everything.
 //
@@ -171,7 +171,7 @@ func (c Client) DispatchRequest(r *http.Request) (*news.Response, error) {
 	return &res, nil
 }
 
-// Encode encodes a p EverythingParams into a query string format. (e.g., foo=bar&wat=lol)
+// Encode encodes a p Params into a query string format. (e.g., foo=bar&wat=lol)
 //
 // It implements newsclient.Params interface.
 func (p Params) Encode() (string, error) {
