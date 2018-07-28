@@ -6,11 +6,10 @@ import (
 	"encoding/json"
 	"io"
 	"log"
-
 	"net/http"
 	"os"
 
-	"github.com/riacataquian/news/pkg/httperror"
+	"github.com/riacataquian/news/internal/httperror"
 	"github.com/riacataquian/news/web/handler"
 
 	"github.com/gorilla/mux"
@@ -25,18 +24,14 @@ const (
 // It injects a context.Context argument for the route handlers to allow deadline and cancelation among HTTP requests.
 // Finally, it marshals successful and error JSON responses.
 func main() {
-	srv := mux.NewRouter()
 	ctx := context.Background()
+	serve(ctx)
+}
 
+func serve(ctx context.Context) {
+	srv := mux.NewRouter().PathPrefix("/api").Subrouter()
 	for _, route := range handler.Routes {
 		srv.Handle(route.Path, middleware(ctx, route.HandlerFunc))
-	}
-
-	env := os.Getenv("APP_ENV")
-	if env == "prod" {
-		log.Println("Running api server on production")
-	} else {
-		log.Println("Running api server on dev")
 	}
 
 	if err := http.ListenAndServe(":8000", srv); err != nil {
@@ -48,9 +43,9 @@ func middleware(ctx context.Context, h handler.Func) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
 
-		resp, err := h(ctx)
+		resp, err := h(ctx, r)
 		if err == nil {
-			w.WriteHeader(http.StatusOK)
+			w.WriteHeader(resp.Code)
 			encode(w, resp)
 		} else {
 			var code int
@@ -68,14 +63,9 @@ func middleware(ctx context.Context, h handler.Func) http.HandlerFunc {
 
 // encode encodes `r` as JSON responses.
 func encode(w io.Writer, r interface{}) {
-	b, err := json.Marshal(r)
+	err := json.NewEncoder(w).Encode(r)
 	if err != nil {
 		log.Fatalf("error marshalling response: %v", err)
-	}
-
-	_, err = w.Write(b)
-	if err != nil {
-		log.Fatalf("error writing response: %v", err)
 		os.Exit(1)
 	}
 }
