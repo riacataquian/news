@@ -16,8 +16,11 @@ import (
 	"github.com/riacataquian/news/internal/newsclient"
 )
 
-// TopHeadlinesPathPrefix is the newsapi's top headlines endpoint prefix.
-const TopHeadlinesPathPrefix = "/top-headlines"
+// PathPrefix is the newsapi's top headlines endpoint prefix.
+const PathPrefix = "/top-headlines"
+
+// Endpoint is top headlines' request endpoint.
+var Endpoint = newsclient.APIBaseURL + PathPrefix
 
 // Params is the request parameters for top headlines endpoint.
 // Requests should have at least one of these parameters.
@@ -47,14 +50,11 @@ type Client struct {
 }
 
 // Get dispatches an HTTP GET request to the newsapi's top headlines endpoint.
-// It times out after 5 seconds.
-//
-// It looks up for an env variable API_KEY and when found, set it to the request's header,
-// it then encodes params and set is as the request's query parameter.
+// It times out after 5 seconds. // // It looks up for an env variable API_KEY and when found, set it to the request's header, // it then encodes params and set is as the request's query parameter.
 //
 // Finally, it dispatches the request by calling DispatchRequest method
 // then encode the response accordingly.
-func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params Params) (*news.Response, error) {
+func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params newsclient.Params) (*news.Response, error) {
 	ctx, cancel := context.WithTimeout(ctxOrigin, 5*time.Second)
 	defer cancel()
 
@@ -84,7 +84,7 @@ func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params P
 			Code:       http.StatusBadRequest,
 			Message:    fmt.Sprintf("encoding query parameters: %v", err),
 			RequestURL: reqOrigin.URL.String(),
-			DocsURL:    newsclient.DocsBaseURL + "/endpoints" + TopHeadlinesPathPrefix,
+			DocsURL:    newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
 		}
 	}
 	req.URL.RawQuery = q
@@ -96,7 +96,7 @@ func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params P
 			Code:       http.StatusBadRequest,
 			Message:    fmt.Sprintf("fetching top headlines: %v", err),
 			RequestURL: reqOrigin.URL.String(),
-			DocsURL:    newsclient.DocsBaseURL + "/endpoints" + TopHeadlinesPathPrefix,
+			DocsURL:    newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
 		}
 	}
 

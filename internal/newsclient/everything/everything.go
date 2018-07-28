@@ -16,10 +16,11 @@ import (
 	"github.com/riacataquian/news/internal/newsclient"
 )
 
-// This file handles querying and interacting with newsapi's everthing endpoint.
+// PathPrefix is newsapi's everything endpoint prefix.
+const PathPrefix = "/everything"
 
-// EverythingPathPrefix is newsapi's everything endpoint prefix.
-const EverythingPathPrefix = "/everything"
+// Endpoint is everythings' request endpoint.
+var Endpoint = newsclient.APIBaseURL + PathPrefix
 
 // Sorting is the order to sort articles in.
 type Sorting string
@@ -53,7 +54,7 @@ const (
 	ZH Language = "zh"
 )
 
-// Params is the request parameters for news under everything category.
+// Params is the request parameters for everything news request.
 // Requests should have at least one of these parameters.
 // See Request Parameters > https://newsapi.org/docs/endpoints/everything.
 //
@@ -124,7 +125,7 @@ func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params P
 			Code:       http.StatusBadRequest,
 			Message:    fmt.Sprintf("encoding query parameters: %v", err),
 			RequestURL: reqOrigin.URL.String(),
-			DocsURL:    newsclient.DocsBaseURL + "/endpoints" + EverythingPathPrefix,
+			DocsURL:    newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
 		}
 	}
 	req.URL.RawQuery = q
@@ -134,9 +135,9 @@ func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params P
 	if err != nil {
 		return nil, &httperror.HTTPError{
 			Code:       http.StatusBadRequest,
-			Message:    fmt.Sprintf("fetching top headlines: %v", err),
+			Message:    fmt.Sprintf("fetching news: %v", err),
 			RequestURL: reqOrigin.URL.String(),
-			DocsURL:    newsclient.DocsBaseURL + "/endpoints" + EverythingPathPrefix,
+			DocsURL:    newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
 		}
 	}
 

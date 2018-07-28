@@ -21,6 +21,7 @@ var Routes = []struct {
 	Path        string
 	HandlerFunc Func
 }{
-	{"/headlines", News},
+	{"/list", List},
+	{"/top-headlines", TopHeadlines},
 	{"/{*}", NotFound},
 }
