@@ -36,7 +36,7 @@ type Params interface {
 
 // Client describes an HTTP news client.
 type Client interface {
-	TopHeadlines(context.Context, *http.Request, Params) (*news.Response, error)
+	Get(context.Context, *http.Request, Params) (*news.Response, error)
 	DispatchRequest(*http.Request) (*news.Response, error)
 }
 

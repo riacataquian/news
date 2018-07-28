@@ -16,11 +16,12 @@ import (
 
 // This file handles querying and interacting with newsapi's top-headlines.
 
-// TopHeadlinesPathPrefix is the top headlines endpoint prefix.
-var TopHeadlinesPathPrefix = "/top-headlines"
+// TopHeadlinesPathPrefix is the newsapi's top headlines endpoint prefix.
+const TopHeadlinesPathPrefix = "/top-headlines"
 
 // TopHeadlinesParams is the request parameters for top headlines endpoint.
-// All of which are optional parameters.
+// All of which are optional parameters, except the `apiKey`,
+// which in newsclient's case is sent as a request header.
 // See Request Parameters > https://newsapi.org/docs/endpoints/top-headlines.
 //
 // It implements Params interface.
@@ -29,21 +30,22 @@ type TopHeadlinesParams struct {
 	Country string `schema:"country"`
 	// Category cannot be mixed with `sources` param.
 	Category string `schema:"category"`
-	// Sources is a comma-separated sources.
-	Sources  string `schema:"sources"`
+	// Sources is a comma-separated news sources.
+	Sources string `schema:"sources"`
+	// Query are keywords or phrase to search for.
 	Query    string `schema:"query"`
 	PageSize int    `schema:"pageSize"` // default: 20, maximum: 100
 	Page     int    `schema:"page"`
 }
 
-// TopHeadlines dispatches an HTTP GET request to the newsapi.
+// Get dispatches an HTTP GET request to the newsapi's top headlines endpoint.
 // It times out after 5 seconds.
 //
 // It looks up for an env variable API_KEY and when found, set it to the request's header,
 // it then encodes params and set is as the request's query parameter.
 //
 // Finally, it dispatches the request and encode the response accordingly.
-func (c NewsClient) TopHeadlines(ctxOrigin context.Context, reqOrigin *http.Request, params Params) (*news.Response, error) {
+func (c NewsClient) Get(ctxOrigin context.Context, reqOrigin *http.Request, params Params) (*news.Response, error) {
 	ctx, cancel := context.WithTimeout(ctxOrigin, 5*time.Second)
 	defer cancel()
 

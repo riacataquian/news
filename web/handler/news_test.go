@@ -39,7 +39,7 @@ type FakeClient struct {
 	IsValid       bool
 }
 
-func (f FakeClient) TopHeadlines(_ context.Context, _ *http.Request, p newsclient.Params) (*news.Response, error) {
+func (f FakeClient) Get(_ context.Context, _ *http.Request, p newsclient.Params) (*news.Response, error) {
 	if f.IsValid {
 		return &news.Response{
 			Status:       "200",

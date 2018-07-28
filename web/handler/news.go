@@ -35,7 +35,7 @@ func News(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
 
 // fetchTopHeadlines performs the request to the client given params.
 func fetchTopHeadlines(ctx context.Context, r *http.Request, client newsclient.Client, params newsclient.Params) (*SuccessResponse, error) {
-	news, err := client.TopHeadlines(ctx, r, params)
+	news, err := client.Get(ctx, r, params)
 	if err != nil {
 		return nil, err
 	}
