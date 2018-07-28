@@ -74,7 +74,7 @@ type Client struct {
 	RequestOrigin *http.Request
 }
 
-// Get dispatches an HTTP GET request to the newsapi's everthing endpoint.
+// Get dispatches an HTTP GET request to the newsapi's everything endpoint.
 // It times out after 5 seconds.
 //
 // It looks up for an env variable API_KEY and when found, set it to the request's header,
@@ -195,7 +195,7 @@ func (p Params) Encode() (string, error) {
 
 	language := p.Language
 	if language != "" {
-		q.Add("language", string(language))
+		q.Add("language", language)
 	}
 
 	sortBy := p.SortBy
