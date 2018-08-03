@@ -18,7 +18,6 @@ import (
 // FakeClient mocks a Client interface.
 type FakeClient struct {
 	newsclient.ServiceEndpoint
-	ContextOrigin context.Context
 	RequestOrigin *http.Request
 	IsValid       bool
 }
