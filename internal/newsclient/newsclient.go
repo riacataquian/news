@@ -30,7 +30,7 @@ type Params interface {
 // Client describes an HTTP news client.
 type Client interface {
 	Get(context.Context, *http.Request, Params) (*news.Response, error)
-	DispatchRequest(*http.Request) (*news.Response, error)
+	DispatchRequest(context.Context, *http.Request) (*news.Response, error)
 }
 
 // ServiceEndpoint wraps a URL in where a request should be dispatched to.

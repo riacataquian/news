@@ -18,7 +18,6 @@ import (
 // FakeClient mocks a Client interface.
 type FakeClient struct {
 	newsclient.ServiceEndpoint
-	ContextOrigin context.Context
 	RequestOrigin *http.Request
 	IsValid       bool
 }
@@ -291,7 +290,7 @@ func TestDispatchRequest(t *testing.T) {
 		t.Fatalf("DispatchRequest(_): error creating a new request: %v", err)
 	}
 
-	got, err := Client{}.DispatchRequest(r)
+	got, err := Client{}.DispatchRequest(context.Background(), r)
 	if err != nil {
 		t.Errorf("DispatchRequest(_): want (%v, nil), got (%v, %v)", want, got, err)
 	}
@@ -317,7 +316,7 @@ func TestDispatchRequestErrors(t *testing.T) {
 		t.Fatalf("DispatchRequest(_): error creating a new request: %v", err)
 	}
 
-	got, err := Client{}.DispatchRequest(r)
+	got, err := Client{}.DispatchRequest(context.Background(), r)
 	if err == nil {
 		t.Errorf("DispatchRequest(_): want (nil, error), got (%v, %v)", got, err)
 	}

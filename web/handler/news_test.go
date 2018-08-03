@@ -34,7 +34,6 @@ func (fp FakeParams) Encode() (string, error) {
 // FakeClient mocks a newsclient.Client interface.
 type FakeClient struct {
 	newsclient.ServiceEndpoint
-	ContextOrigin context.Context
 	RequestOrigin *http.Request
 	IsValid       bool
 }
@@ -75,7 +74,7 @@ func (f FakeClient) Get(_ context.Context, _ *http.Request, p newsclient.Params)
 	return nil, errors.New("some error")
 }
 
-func (f FakeClient) DispatchRequest(r *http.Request) (*news.Response, error) {
+func (f FakeClient) DispatchRequest(_ context.Context, r *http.Request) (*news.Response, error) {
 	if f.IsValid {
 		return &news.Response{
 			Status:       "200",
@@ -107,7 +106,6 @@ func setupFakeClient(t *testing.T, conf config) FakeClient {
 		ServiceEndpoint: newsclient.ServiceEndpoint{
 			URL: "test-url",
 		},
-		ContextOrigin: conf.ctx,
 		RequestOrigin: conf.req,
 		IsValid:       conf.isValid,
 	}

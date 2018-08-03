@@ -70,7 +70,6 @@ type Params struct {
 // It implements the newsclient.Client interface.
 type Client struct {
 	newsclient.ServiceEndpoint
-	ContextOrigin context.Context
 	RequestOrigin *http.Request
 }
 
@@ -123,7 +122,7 @@ func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params n
 	req.URL.RawQuery = q
 
 	// Dispatch request to newsapi.
-	resp, err := c.DispatchRequest(req)
+	resp, err := c.DispatchRequest(ctx, req)
 	if err != nil {
 		return nil, &httperror.HTTPError{
 			Code:       http.StatusBadRequest,
@@ -140,7 +139,7 @@ func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params n
 //
 // It encodes and return a news.ErrorResponse when an error is encountered.
 // Returns news.Response otherwise for successful requests.
-func (c Client) DispatchRequest(r *http.Request) (*news.Response, error) {
+func (c Client) DispatchRequest(_ context.Context, r *http.Request) (*news.Response, error) {
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
 		return nil, err

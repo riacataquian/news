@@ -18,7 +18,6 @@ import (
 // FakeClient mocks a Client interface.
 type FakeClient struct {
 	newsclient.ServiceEndpoint
-	ContextOrigin context.Context
 	RequestOrigin *http.Request
 	IsValid       bool
 }
@@ -60,7 +59,7 @@ func (f FakeClient) Get(_ context.Context, _ *http.Request, p Params) (*news.Res
 	return nil, errors.New("some error")
 }
 
-func (f FakeClient) DispatchRequest(r *http.Request) (*news.Response, error) {
+func (f FakeClient) DispatchRequest(_ context.Context, r *http.Request) (*news.Response, error) {
 	if f.IsValid {
 		return &news.Response{
 			Status:       "200",
@@ -288,17 +287,17 @@ func TestDispatchRequest(t *testing.T) {
 
 	r, err := http.NewRequest("GET", server.URL, nil)
 	if err != nil {
-		t.Fatalf("DispatchRequest(_): error creating a new request: %v", err)
+		t.Fatalf("DispatchRequest(_, _): error creating a new request: %v", err)
 	}
 
-	got, err := Client{}.DispatchRequest(r)
+	got, err := Client{}.DispatchRequest(context.Background(), r)
 	if err != nil {
-		t.Errorf("DispatchRequest(_): want (%v, nil), got (%v, %v)", want, got, err)
+		t.Errorf("DispatchRequest(_, _): want (%v, nil), got (%v, %v)", want, got, err)
 	}
 
 	if diff := pretty.Compare(got, want); diff != "" {
 		desc := "returns a news.Response and nil error"
-		t.Errorf("%s: DispatchRequest(_) diff: (-got +want)\n%s", desc, diff)
+		t.Errorf("%s: DispatchRequest(_, _) diff: (-got +want)\n%s", desc, diff)
 	}
 }
 
@@ -314,17 +313,17 @@ func TestDispatchRequestErrors(t *testing.T) {
 
 	r, err := http.NewRequest("GET", server.URL, nil)
 	if err != nil {
-		t.Fatalf("DispatchRequest(_): error creating a new request: %v", err)
+		t.Fatalf("DispatchRequest(_, _): error creating a new request: %v", err)
 	}
 
-	got, err := Client{}.DispatchRequest(r)
+	got, err := Client{}.DispatchRequest(context.Background(), r)
 	if err == nil {
-		t.Errorf("DispatchRequest(_): want (nil, error), got (%v, %v)", got, err)
+		t.Errorf("DispatchRequest(_, _): want (nil, error), got (%v, %v)", got, err)
 	}
 
 	if diff := pretty.Compare(err, want); diff != "" {
 		desc := "returns a news.ErrorResponse when error is encountered"
-		t.Errorf("%s: DispatchRequest(_) diff: (-got +want)\n%s", desc, diff)
+		t.Errorf("%s: DispatchRequest(_, _) diff: (-got +want)\n%s", desc, diff)
 	}
 }
 
