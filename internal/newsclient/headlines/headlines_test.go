@@ -15,21 +15,20 @@ import (
 	"github.com/riacataquian/news/internal/newsclient"
 )
 
-// FakeClient mocks a Client interface.
-type FakeClient struct {
+// fakeclient mocks a Client interface.
+type fakeclient struct {
 	newsclient.ServiceEndpoint
-	RequestOrigin *http.Request
-	IsValid       bool
+	isValid bool
 }
 
-func (f FakeClient) Get(_ context.Context, _ *http.Request, p Params) (*news.Response, error) {
-	if f.IsValid {
+func (f fakeclient) Get(_ context.Context, _ *http.Request, p Params) (*news.Response, error) {
+	if f.isValid {
 		return &news.Response{
 			Status:       "200",
 			TotalResults: 2,
-			Articles: []news.News{
+			Articles: []*news.News{
 				{
-					Source: news.Source{
+					Source: &news.Source{
 						ID:   "bloomberg",
 						Name: "Bloomberg",
 					},
@@ -41,7 +40,7 @@ func (f FakeClient) Get(_ context.Context, _ *http.Request, p Params) (*news.Res
 					PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
 				},
 				{
-					Source: news.Source{
+					Source: &news.Source{
 						ID:   "financial-times",
 						Name: "Financial Times",
 					},
@@ -59,14 +58,14 @@ func (f FakeClient) Get(_ context.Context, _ *http.Request, p Params) (*news.Res
 	return nil, errors.New("some error")
 }
 
-func (f FakeClient) DispatchRequest(_ context.Context, r *http.Request) (*news.Response, error) {
-	if f.IsValid {
+func (f fakeclient) DispatchRequest(_ context.Context, r *http.Request) (*news.Response, error) {
+	if f.isValid {
 		return &news.Response{
 			Status:       "200",
 			TotalResults: 2,
-			Articles: []news.News{
+			Articles: []*news.News{
 				{
-					Source: news.Source{
+					Source: &news.Source{
 						ID:   "bloomberg",
 						Name: "Bloomberg",
 					},
@@ -106,9 +105,9 @@ func setupStubServer(t *testing.T, isValid bool) *httptest.Server {
 		resp := &news.Response{
 			Status:       "200",
 			TotalResults: 2,
-			Articles: []news.News{
+			Articles: []*news.News{
 				{
-					Source: news.Source{
+					Source: &news.Source{
 						ID:   "bloomberg",
 						Name: "Bloomberg",
 					},
@@ -120,7 +119,7 @@ func setupStubServer(t *testing.T, isValid bool) *httptest.Server {
 					PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
 				},
 				{
-					Source: news.Source{
+					Source: &news.Source{
 						ID:   "financial-times",
 						Name: "Financial Times",
 					},
@@ -147,9 +146,9 @@ func TestGet(t *testing.T) {
 	want := &news.Response{
 		Status:       "200",
 		TotalResults: 2,
-		Articles: []news.News{
+		Articles: []*news.News{
 			{
-				Source: news.Source{
+				Source: &news.Source{
 					ID:   "bloomberg",
 					Name: "Bloomberg",
 				},
@@ -161,7 +160,7 @@ func TestGet(t *testing.T) {
 				PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
 			},
 			{
-				Source: news.Source{
+				Source: &news.Source{
 					ID:   "financial-times",
 					Name: "Financial Times",
 				},
@@ -178,11 +177,11 @@ func TestGet(t *testing.T) {
 	server := setupStubServer(t, true)
 	defer server.Close()
 
-	client := FakeClient{
+	client := fakeclient{
 		ServiceEndpoint: newsclient.ServiceEndpoint{
 			URL: server.URL,
 		},
-		IsValid: true,
+		isValid: true,
 	}
 
 	ctx := context.Background()
@@ -237,7 +236,7 @@ func TestGetErrors(t *testing.T) {
 
 			r := httptest.NewRequest("GET", server.URL, nil)
 			ctx := context.Background()
-			client := FakeClient{
+			client := fakeclient{
 				ServiceEndpoint: newsclient.ServiceEndpoint{
 					URL: server.URL,
 				},
@@ -254,9 +253,9 @@ func TestDispatchRequest(t *testing.T) {
 	want := &news.Response{
 		Status:       "200",
 		TotalResults: 2,
-		Articles: []news.News{
+		Articles: []*news.News{
 			{
-				Source: news.Source{
+				Source: &news.Source{
 					ID:   "bloomberg",
 					Name: "Bloomberg",
 				},
@@ -268,7 +267,7 @@ func TestDispatchRequest(t *testing.T) {
 				PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
 			},
 			{
-				Source: news.Source{
+				Source: &news.Source{
 					ID:   "financial-times",
 					Name: "Financial Times",
 				},
@@ -290,7 +289,8 @@ func TestDispatchRequest(t *testing.T) {
 		t.Fatalf("DispatchRequest(_, _): error creating a new request: %v", err)
 	}
 
-	got, err := Client{}.DispatchRequest(context.Background(), r)
+	client := &Client{}
+	got, err := client.DispatchRequest(context.Background(), r)
 	if err != nil {
 		t.Errorf("DispatchRequest(_, _): want (%v, nil), got (%v, %v)", want, got, err)
 	}
@@ -316,7 +316,8 @@ func TestDispatchRequestErrors(t *testing.T) {
 		t.Fatalf("DispatchRequest(_, _): error creating a new request: %v", err)
 	}
 
-	got, err := Client{}.DispatchRequest(context.Background(), r)
+	client := &Client{}
+	got, err := client.DispatchRequest(context.Background(), r)
 	if err == nil {
 		t.Errorf("DispatchRequest(_, _): want (nil, error), got (%v, %v)", got, err)
 	}
