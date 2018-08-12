@@ -4,7 +4,6 @@ package store
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -20,7 +19,13 @@ type Repo struct {
 //
 // It opens and establishes a connection to a Postgresql database pool if none is available.
 func New() Store {
-	constr := fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=disable", os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_USER"), os.Getenv("DB_NAME"))
+	conf := DBConfig{
+		Host: "localhost",
+		Port: 5432,
+		User: "",
+		Name: "news",
+	}
+	constr := fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=disable", conf.Host, conf.Port, conf.User, conf.Name)
 	db, err := sqlx.Open("postgres", constr) // Validates the connection string.
 	if err != nil {
 		panic(err)
