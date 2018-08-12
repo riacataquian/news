@@ -2,10 +2,7 @@ package list
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -14,75 +11,6 @@ import (
 	"github.com/riacataquian/news/api/news"
 	"github.com/riacataquian/news/internal/newsclient"
 )
-
-// FakeClient mocks a Client interface.
-type FakeClient struct {
-	newsclient.ServiceEndpoint
-	RequestOrigin *http.Request
-	IsValid       bool
-}
-
-func (f FakeClient) Get(_ context.Context, _ *http.Request, p Params) (*news.Response, error) {
-	if f.IsValid {
-		return &news.Response{
-			Status:       "200",
-			TotalResults: 2,
-			Articles: []news.News{
-				{
-					Source: news.Source{
-						ID:   "bloomberg",
-						Name: "Bloomberg",
-					},
-					Author:      "some-author",
-					Title:       "some-title",
-					Description: "some-description",
-					URL:         "some-URL",
-					ImageURL:    "some-image-url",
-					PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
-				},
-				{
-					Source: news.Source{
-						ID:   "financial-times",
-						Name: "Financial Times",
-					},
-					Author:      "some-author",
-					Title:       "some-title",
-					Description: "some-description",
-					URL:         "some-URL",
-					ImageURL:    "some-image-url",
-					PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
-				},
-			},
-		}, nil
-	}
-
-	return nil, errors.New("some error")
-}
-
-func (f FakeClient) DispatchRequest(r *http.Request) (*news.Response, error) {
-	if f.IsValid {
-		return &news.Response{
-			Status:       "200",
-			TotalResults: 2,
-			Articles: []news.News{
-				{
-					Source: news.Source{
-						ID:   "bloomberg",
-						Name: "Bloomberg",
-					},
-					Author:      "some-author",
-					Title:       "some-title",
-					Description: "some-description",
-					URL:         "some-URL",
-					ImageURL:    "some-image-url",
-					PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
-				},
-			},
-		}, nil
-	}
-
-	return nil, errors.New("failed request")
-}
 
 func setupAPIKey(t *testing.T) {
 	t.Helper()
@@ -93,52 +21,18 @@ func setupAPIKey(t *testing.T) {
 	}
 }
 
-func setupStubServer(t *testing.T, isValid bool) *httptest.Server {
-	t.Helper()
+func TestNewClient(t *testing.T) {
+	got := NewClient()
+	want := &Client{
+		ServiceEndpoint: newsclient.ServiceEndpoint{
+			URL: Endpoint,
+		},
+	}
 
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !isValid {
-			errString := `{"status": "internal server error", "code": "500", "message": "some error"}`
-			http.Error(w, errString, http.StatusNotFound)
-			return
-		}
-
-		resp := &news.Response{
-			Status:       "200",
-			TotalResults: 2,
-			Articles: []news.News{
-				{
-					Source: news.Source{
-						ID:   "bloomberg",
-						Name: "Bloomberg",
-					},
-					Author:      "some-author",
-					Title:       "some-title",
-					Description: "some-description",
-					URL:         "some-URL",
-					ImageURL:    "some-image-url",
-					PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
-				},
-				{
-					Source: news.Source{
-						ID:   "financial-times",
-						Name: "Financial Times",
-					},
-					Author:      "some-author",
-					Title:       "some-title",
-					Description: "some-description",
-					URL:         "some-URL",
-					ImageURL:    "some-image-url",
-					PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
-				},
-			},
-		}
-		b, err := json.Marshal(resp)
-		if err != nil {
-			t.Fatalf("error marshalling response: %v", err)
-		}
-		w.Write(b)
-	}))
+	if diff := pretty.Compare(got, want); diff != "" {
+		desc := "returns a new list newsclient"
+		t.Errorf("%s: NewClient(): Diff (-got +want)\n%s", desc, diff)
+	}
 }
 
 func TestGet(t *testing.T) {
@@ -147,9 +41,9 @@ func TestGet(t *testing.T) {
 	want := &news.Response{
 		Status:       "200",
 		TotalResults: 2,
-		Articles: []news.News{
+		Articles: []*news.News{
 			{
-				Source: news.Source{
+				Source: &news.Source{
 					ID:   "bloomberg",
 					Name: "Bloomberg",
 				},
@@ -161,7 +55,7 @@ func TestGet(t *testing.T) {
 				PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
 			},
 			{
-				Source: news.Source{
+				Source: &news.Source{
 					ID:   "financial-times",
 					Name: "Financial Times",
 				},
@@ -178,16 +72,10 @@ func TestGet(t *testing.T) {
 	server := setupStubServer(t, true)
 	defer server.Close()
 
-	client := FakeClient{
-		ServiceEndpoint: newsclient.ServiceEndpoint{
-			URL: server.URL,
-		},
-		IsValid: true,
-	}
+	client := fakeclient{isValid: true}
 
 	ctx := context.Background()
-	r := httptest.NewRequest("GET", server.URL, nil)
-	got, err := client.Get(ctx, r, Params{SortBy: Relevancy, Language: "en"})
+	got, err := client.Get(ctx, Params{SortBy: Relevancy, Language: "en"})
 	if err != nil {
 		t.Errorf("Get: want (%v, nil), got (%v, %v)", want, got, err)
 	}
@@ -235,16 +123,11 @@ func TestGetErrors(t *testing.T) {
 			server := setupStubServer(t, false)
 			defer server.Close()
 
-			r := httptest.NewRequest("GET", server.URL, nil)
 			ctx := context.Background()
-			client := FakeClient{
-				ServiceEndpoint: newsclient.ServiceEndpoint{
-					URL: server.URL,
-				},
-			}
-			got, err := client.Get(ctx, r, test.params)
+			client := fakeclient{}
+			got, err := client.Get(ctx, test.params)
 			if err == nil {
-				t.Errorf("%s: Get(_, _, %v) want (nil, error), got (%v, %v)", test.desc, test.params, got, err)
+				t.Errorf("%s: Get(_, %v) want (nil, error), got (%v, %v)", test.desc, test.params, got, err)
 			}
 		})
 	}
@@ -254,9 +137,9 @@ func TestDispatchRequest(t *testing.T) {
 	want := &news.Response{
 		Status:       "200",
 		TotalResults: 2,
-		Articles: []news.News{
+		Articles: []*news.News{
 			{
-				Source: news.Source{
+				Source: &news.Source{
 					ID:   "bloomberg",
 					Name: "Bloomberg",
 				},
@@ -268,7 +151,7 @@ func TestDispatchRequest(t *testing.T) {
 				PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
 			},
 			{
-				Source: news.Source{
+				Source: &news.Source{
 					ID:   "financial-times",
 					Name: "Financial Times",
 				},
@@ -290,7 +173,8 @@ func TestDispatchRequest(t *testing.T) {
 		t.Fatalf("DispatchRequest(_): error creating a new request: %v", err)
 	}
 
-	got, err := Client{}.DispatchRequest(context.Background(), r)
+	client := &Client{}
+	got, err := client.DispatchRequest(context.Background(), r)
 	if err != nil {
 		t.Errorf("DispatchRequest(_): want (%v, nil), got (%v, %v)", want, got, err)
 	}
@@ -316,7 +200,8 @@ func TestDispatchRequestErrors(t *testing.T) {
 		t.Fatalf("DispatchRequest(_): error creating a new request: %v", err)
 	}
 
-	got, err := Client{}.DispatchRequest(context.Background(), r)
+	client := &Client{}
+	got, err := client.DispatchRequest(context.Background(), r)
 	if err == nil {
 		t.Errorf("DispatchRequest(_): want (nil, error), got (%v, %v)", got, err)
 	}

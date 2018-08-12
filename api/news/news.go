@@ -11,13 +11,13 @@ type Response struct {
 	Status string `json:"status"`
 	// TotalResults are the total count of queryable results.
 	// Use page parameter to page through the results.
-	TotalResults int    `json:"totalResults"`
-	Articles     []News `json:"articles"`
+	TotalResults int     `json:"totalResults"`
+	Articles     []*News `json:"articles"`
 }
 
 // News describes a news object.
 type News struct {
-	Source      `json:"source"`
+	*Source     `json:"source"`
 	Author      string    `json:"author"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`

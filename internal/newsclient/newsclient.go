@@ -29,7 +29,7 @@ type Params interface {
 
 // Client describes an HTTP news client.
 type Client interface {
-	Get(context.Context, *http.Request, Params) (*news.Response, error)
+	Get(context.Context, Params) (*news.Response, error)
 	DispatchRequest(context.Context, *http.Request) (*news.Response, error)
 }
 

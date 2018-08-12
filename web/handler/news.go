@@ -22,12 +22,7 @@ var client newsclient.Client
 func List(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
 	r.ParseForm()
 
-	client = list.Client{
-		ServiceEndpoint: newsclient.ServiceEndpoint{
-			URL: list.Endpoint,
-		},
-	}
-
+	client = list.NewClient()
 	dst := new(list.Params)
 	err := schema.NewDecoder().Decode(dst, r.Form)
 	if err != nil {
@@ -42,12 +37,7 @@ func List(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
 func TopHeadlines(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
 	r.ParseForm()
 
-	client = headlines.Client{
-		ServiceEndpoint: newsclient.ServiceEndpoint{
-			URL: headlines.Endpoint,
-		},
-	}
-
+	client = headlines.NewClient()
 	dst := new(headlines.Params)
 	err := schema.NewDecoder().Decode(dst, r.Form)
 	if err != nil {
@@ -59,7 +49,7 @@ func TopHeadlines(ctx context.Context, r *http.Request) (*SuccessResponse, error
 
 // fetch performs the request to the client given params.
 func fetch(ctx context.Context, r *http.Request, client newsclient.Client, params newsclient.Params) (*SuccessResponse, error) {
-	news, err := client.Get(ctx, r, params)
+	news, err := client.Get(ctx, params)
 	if err != nil {
 		return nil, err
 	}

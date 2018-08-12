@@ -38,14 +38,14 @@ type FakeClient struct {
 	IsValid       bool
 }
 
-func (f FakeClient) Get(_ context.Context, _ *http.Request, p newsclient.Params) (*news.Response, error) {
+func (f FakeClient) Get(_ context.Context, p newsclient.Params) (*news.Response, error) {
 	if f.IsValid {
 		return &news.Response{
 			Status:       "200",
 			TotalResults: 2,
-			Articles: []news.News{
+			Articles: []*news.News{
 				{
-					Source: news.Source{
+					Source: &news.Source{
 						ID:   "bloomberg",
 						Name: "Bloomberg",
 					},
@@ -57,7 +57,7 @@ func (f FakeClient) Get(_ context.Context, _ *http.Request, p newsclient.Params)
 					PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
 				},
 				{
-					Source: news.Source{
+					Source: &news.Source{
 						ID:   "financial-times",
 						Name: "Financial Times",
 					},
@@ -78,10 +78,10 @@ func (f FakeClient) DispatchRequest(_ context.Context, r *http.Request) (*news.R
 	if f.IsValid {
 		return &news.Response{
 			Status:       "200",
-			TotalResults: 2,
-			Articles: []news.News{
+			TotalResults: 1,
+			Articles: []*news.News{
 				{
-					Source: news.Source{
+					Source: &news.Source{
 						ID:   "bloomberg",
 						Name: "Bloomberg",
 					},
@@ -133,9 +133,9 @@ func TestFetch(t *testing.T) {
 		Data: &news.Response{
 			Status:       "200",
 			TotalResults: 2,
-			Articles: []news.News{
+			Articles: []*news.News{
 				{
-					Source: news.Source{
+					Source: &news.Source{
 						ID:   "bloomberg",
 						Name: "Bloomberg",
 					},
@@ -147,7 +147,7 @@ func TestFetch(t *testing.T) {
 					PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
 				},
 				{
-					Source: news.Source{
+					Source: &news.Source{
 						ID:   "financial-times",
 						Name: "Financial Times",
 					},

@@ -56,7 +56,15 @@ type Params struct {
 // It implements the newsclient.Client interface.
 type Client struct {
 	newsclient.ServiceEndpoint
-	RequestOrigin *http.Request
+}
+
+// NewClient returns a new headlines.Client.
+func NewClient() newsclient.Client {
+	return &Client{
+		ServiceEndpoint: newsclient.ServiceEndpoint{
+			URL: Endpoint,
+		},
+	}
 }
 
 // Get dispatches an HTTP GET request to the newsapi's top headlines endpoint.
@@ -64,17 +72,16 @@ type Client struct {
 //
 // Finally, it dispatches the request by calling DispatchRequest method
 // then encode the response accordingly.
-func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params newsclient.Params) (*news.Response, error) {
+func (c *Client) Get(ctxOrigin context.Context, params newsclient.Params) (*news.Response, error) {
 	ctx, cancel := context.WithTimeout(ctxOrigin, 5*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequest(http.MethodGet, c.URL, nil)
 	if err != nil {
 		return nil, &httperror.HTTPError{
-			Code:       http.StatusBadRequest,
-			Message:    fmt.Sprintf("encoding query parameters: %v", err),
-			RequestURL: reqOrigin.URL.String(),
-			DocsURL:    newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("encoding query parameters: %v", err),
+			DocsURL: newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
 		}
 	}
 
@@ -85,10 +92,9 @@ func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params n
 	err = newsclient.LookupAndSetAuth(req)
 	if err != nil {
 		return nil, &httperror.HTTPError{
-			Code:       http.StatusBadRequest,
-			Message:    err.Error(),
-			RequestURL: reqOrigin.URL.String(),
-			DocsURL:    newsclient.DocsBaseURL + "/authentication",
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+			DocsURL: newsclient.DocsBaseURL + "/authentication",
 		}
 	}
 
@@ -96,10 +102,9 @@ func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params n
 	q, err := params.Encode()
 	if err != nil {
 		return nil, &httperror.HTTPError{
-			Code:       http.StatusBadRequest,
-			Message:    fmt.Sprintf("encoding query parameters: %v", err),
-			RequestURL: reqOrigin.URL.String(),
-			DocsURL:    newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("encoding query parameters: %v", err),
+			DocsURL: newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
 		}
 	}
 	req.URL.RawQuery = q
@@ -108,10 +113,9 @@ func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params n
 	resp, err := c.DispatchRequest(ctx, req)
 	if err != nil {
 		return nil, &httperror.HTTPError{
-			Code:       http.StatusBadRequest,
-			Message:    fmt.Sprintf("fetching top headlines: %v", err),
-			RequestURL: reqOrigin.URL.String(),
-			DocsURL:    newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("fetching top headlines: %v", err),
+			DocsURL: newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
 		}
 	}
 
@@ -122,7 +126,7 @@ func (c Client) Get(ctxOrigin context.Context, reqOrigin *http.Request, params n
 //
 // It encodes and return a news.ErrorResponse when an error is encountered.
 // Returns news.Response otherwise for successful requests.
-func (c Client) DispatchRequest(_ context.Context, r *http.Request) (*news.Response, error) {
+func (c *Client) DispatchRequest(_ context.Context, r *http.Request) (*news.Response, error) {
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
 		return nil, err

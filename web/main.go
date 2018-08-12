@@ -39,6 +39,12 @@ func serve(ctx context.Context) {
 	}
 }
 
+// middleware transforms a handler.Func to http.HandlerFunc.
+//
+// The middleware does the repetitive yet necessary calculations for a handler:
+// 1. Sets the response's content-type to application/json.
+// 2. Sets the supplied status code in the response's header then finally encode the response for JSON rendering.
+// 3. When an error is encountered, sets the proper response header, given an httperror or the DefaultErrStatusCode.
 func middleware(ctx context.Context, h handler.Func) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
@@ -47,24 +53,24 @@ func middleware(ctx context.Context, h handler.Func) http.HandlerFunc {
 		if err == nil {
 			w.WriteHeader(resp.Code)
 			encode(w, resp)
-		} else {
-			var code int
-			if v, ok := err.(*httperror.HTTPError); ok {
-				code = v.Code
-			} else {
-				code = DefaultErrStatusCode
-			}
-
-			w.WriteHeader(code)
-			encode(w, err)
+			return
 		}
+
+		var code int
+		if v, ok := err.(*httperror.HTTPError); ok {
+			code = v.Code
+		} else {
+			code = DefaultErrStatusCode
+		}
+
+		w.WriteHeader(code)
+		encode(w, err)
 	}
 }
 
-// encode encodes `r` as JSON responses.
+// encode encodes `r` to `w` as JSON responses.
 func encode(w io.Writer, r interface{}) {
-	err := json.NewEncoder(w).Encode(r)
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(r); err != nil {
 		log.Fatalf("error marshalling response: %v", err)
 		os.Exit(1)
 	}
