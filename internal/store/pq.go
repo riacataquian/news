@@ -25,7 +25,7 @@ func New() Store {
 		User: "",
 		Name: "news",
 	}
-	constr := fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=disable", conf.Host, conf.Port, conf.User, conf.Name)
+	constr := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", conf.Host, conf.Port, conf.User, conf.Name)
 	db, err := sqlx.Open("postgres", constr) // Validates the connection string.
 	if err != nil {
 		panic(err)
