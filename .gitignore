@@ -1,5 +1,6 @@
 .notes
 .env
+.wat
 
 # build artifacts
 web/web
