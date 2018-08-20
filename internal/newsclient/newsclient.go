@@ -4,9 +4,7 @@ package newsclient
 
 import (
 	"context"
-	"errors"
 	"net/http"
-	"os"
 
 	"github.com/riacataquian/news/api/news"
 )
@@ -17,9 +15,6 @@ var (
 
 	// DocsBaseURL is the base URL of newsapi's documentation.
 	DocsBaseURL = "https://newsapi.org/docs"
-
-	// ErrMissingAPIKey is the error message for missing API key.
-	ErrMissingAPIKey = "missing API key in the request header or parameters"
 )
 
 // Params describes a Client's parameters.
@@ -29,22 +24,7 @@ type Params interface {
 
 // Client describes an HTTP news client.
 type Client interface {
-	Get(context.Context, Params) (*news.Response, error)
-	DispatchRequest(context.Context, *http.Request) (*news.Response, error)
-}
-
-// ServiceEndpoint wraps a URL in where a request should be dispatched to.
-type ServiceEndpoint struct {
-	URL string
-}
-
-// LookupAndSetAuth sets the env variable API_KEY in the supplied request.
-func LookupAndSetAuth(r *http.Request) error {
-	k, ok := os.LookupEnv("API_KEY")
-	if !ok {
-		return errors.New(ErrMissingAPIKey)
-	}
-
-	r.Header.Set("X-Api-Key", k)
-	return nil
+	NewGetRequest(context.Context) (*http.Request, error)
+	AuthorizeReq(*http.Request, string)
+	Get(*http.Request, Params) (*news.Response, error)
 }

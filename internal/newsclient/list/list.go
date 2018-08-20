@@ -3,15 +3,14 @@ package list
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
-	"time"
 
 	"github.com/riacataquian/news/api/news"
+	"github.com/riacataquian/news/internal/httpclient"
 	"github.com/riacataquian/news/internal/httperror"
 	"github.com/riacataquian/news/internal/newsclient"
 )
@@ -24,8 +23,13 @@ const maxPageSize = 100
 // ErrNoRequiredParams is the error message if no request parameter is present in the request.
 const ErrNoRequiredParams = "required parameters are missing: query, sources, domains."
 
+// ErrMissingAPIKey is the error message for missing API key.
+var ErrMissingAPIKey = errors.New("missing API key in the request header or parameters")
+
 // Endpoint is the request endpoint.
 var Endpoint = newsclient.APIBaseURL + PathPrefix
+
+var client = httpclient.NewClient()
 
 // Sorting is the order to sort articles in.
 type Sorting string
@@ -70,65 +74,53 @@ type Params struct {
 //
 // Client satisfies the newsclient.Client interface.
 type Client struct {
-	newsclient.ServiceEndpoint
+	serviceEndpoint
+}
+
+// serviceEndpoint wraps domains and their external URLs - where requests should be dispatched to.
+type serviceEndpoint struct {
+	everything string
 }
 
 // NewClient returns a new list.Client.
 func NewClient() newsclient.Client {
 	return &Client{
-		ServiceEndpoint: newsclient.ServiceEndpoint{
-			URL: Endpoint,
+		serviceEndpoint: serviceEndpoint{
+			everything: Endpoint,
 		},
 	}
 }
 
-// Get dispatches an HTTP GET request to the newsapi's everything endpoint.
-// It times out after 5 seconds.
-//
-// It looks up for an env variable API_KEY and when found, set it to the request's header,
-// it then encodes params and set is as the request's query parameter.
-//
-// Finally, it dispatches the request by calling DispatchRequest method
-// then encode the response accordingly.
-func (c *Client) Get(ctxOrigin context.Context, params newsclient.Params) (*news.Response, error) {
-	ctx, cancel := context.WithTimeout(ctxOrigin, 5*time.Second)
-	defer cancel()
-
-	req, err := http.NewRequest(http.MethodGet, c.URL, nil)
+// NewGetRequest ...
+func (c *Client) NewGetRequest(ctx context.Context) (*http.Request, error) {
+	r, err := http.NewRequest(http.MethodGet, c.everything, nil)
 	if err != nil {
-		return nil, &httperror.HTTPError{
-			Code:    http.StatusBadRequest,
-			Message: fmt.Sprintf("getting news list: %v", err),
-			DocsURL: newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
-		}
+		return nil, err
 	}
+	r = r.WithContext(ctx)
+	return r, nil
+}
 
-	// Requests to external services should timeout for 5 seconds.
-	req = req.WithContext(ctx)
+// AuthorizeReq ...
+func (c *Client) AuthorizeReq(r *http.Request, key string) {
+	r.Header.Set("X-Api-Key", key)
+}
 
-	// Find and set request's API_KEY header.
-	err = newsclient.LookupAndSetAuth(req)
-	if err != nil {
-		return nil, &httperror.HTTPError{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-			DocsURL: newsclient.DocsBaseURL + "/authentication",
-		}
+// Get ...
+func (c *Client) Get(r *http.Request, params newsclient.Params) (*news.Response, error) {
+	if k := r.Header.Get("X-Api-Key"); k == "" {
+		return nil, ErrMissingAPIKey
 	}
 
 	// Encode query parameters from the request origin.
 	q, err := params.Encode()
 	if err != nil {
-		return nil, &httperror.HTTPError{
-			Code:    http.StatusBadRequest,
-			Message: fmt.Sprintf("encoding query parameters: %v", err),
-			DocsURL: newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
-		}
+		return nil, err
 	}
-	req.URL.RawQuery = q
+	r.URL.RawQuery = q
 
 	// Dispatch request to newsapi.
-	resp, err := c.DispatchRequest(ctx, req)
+	resp, err := client.DispatchRequest(r)
 	if err != nil {
 		return nil, &httperror.HTTPError{
 			Code:    http.StatusBadRequest,
@@ -138,33 +130,6 @@ func (c *Client) Get(ctxOrigin context.Context, params newsclient.Params) (*news
 	}
 
 	return resp, nil
-}
-
-// DispatchRequest dispatches given r http.Request.
-//
-// It encodes and return a news.ErrorResponse when an error is encountered.
-// Returns news.Response otherwise for successful requests.
-func (c *Client) DispatchRequest(_ context.Context, r *http.Request) (*news.Response, error) {
-	resp, err := http.DefaultClient.Do(r)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var res news.ErrorResponse
-		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-			return nil, fmt.Errorf("error decoding response: %v", err)
-		}
-		return nil, &res
-	}
-
-	var res news.Response
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		return nil, fmt.Errorf("error decoding response: %v", err)
-	}
-
-	return &res, nil
 }
 
 // Encode encodes a p Params into a query string format. (e.g., foo=bar&wat=lol)
