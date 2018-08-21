@@ -14,6 +14,8 @@ type SuccessResponse struct {
 	Count int `json:"count"`
 	// Page is the current result's page.
 	Page int `json:"page"`
+	// TotalCount is the number of queryable results.
+	TotalCount int `json:"totalCount"`
 	// Data is the actual response from newsapi.
 	Data interface{} `json:"data"`
 }
@@ -27,6 +29,6 @@ var Routes = []struct {
 	HandlerFunc Func
 }{
 	{"/list", List},
-	{"/top-headlines", TopHeadlines},
+	{"/headlines", TopHeadlines},
 	{"/{*}", NotFound},
 }

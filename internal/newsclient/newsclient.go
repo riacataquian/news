@@ -4,22 +4,12 @@ package newsclient
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
+	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/riacataquian/news/api/news"
-)
-
-var (
-	// APIBaseURL is the base URL of newsapi's API endpoint.
-	APIBaseURL = "https://newsapi.org/v2"
-
-	// DocsBaseURL is the base URL of newsapi's documentation.
-	DocsBaseURL = "https://newsapi.org/docs"
-
-	// ErrMissingAPIKey is the error message for missing API key.
-	ErrMissingAPIKey = "missing API key in the request header or parameters"
+	"github.com/riacataquian/news/internal/httperror"
 )
 
 // Params describes a Client's parameters.
@@ -27,24 +17,94 @@ type Params interface {
 	Encode() (string, error)
 }
 
-// Client describes an HTTP news client.
-type Client interface {
-	Get(context.Context, Params) (*news.Response, error)
-	DispatchRequest(context.Context, *http.Request) (*news.Response, error)
+// HTTPClient describes an HTTP client.
+type HTTPClient interface {
+	Get(string, Params) (*news.Response, error)
 }
 
-// ServiceEndpoint wraps a URL in where a request should be dispatched to.
+// ServiceEndpoint wraps the URLs for newsapi endpoints.
 type ServiceEndpoint struct {
-	URL string
+	RequestURL string
+	DocsURL    string
 }
 
-// LookupAndSetAuth sets the env variable API_KEY in the supplied request.
-func LookupAndSetAuth(r *http.Request) error {
-	k, ok := os.LookupEnv("API_KEY")
-	if !ok {
-		return errors.New(ErrMissingAPIKey)
+// Client performs HTTP requests to newsapi endpoints.
+//
+// See https://newsapi.org/docs/endpoints for the list of available endpoints.
+type Client struct {
+	ServiceEndpoint
+
+	// Unexported fields.
+	ctx context.Context
+}
+
+// NewFromContext returns a new Client.
+// The supplied context.Context can be used later for HTTP request timeouts and cancellations.
+func NewFromContext(ctx context.Context, se ServiceEndpoint) *Client {
+	return &Client{ctx: ctx, ServiceEndpoint: se}
+}
+
+// Get fetches news from newsapi endpoints.
+//
+// Get injects the client's context, if any, to the current request.
+// This can be used to enforce timeouts and cancellations.
+//
+// The request's `X-Api-Key` header is set with the supplied authKey.
+func (client *Client) Get(authKey string, params Params) (*news.Response, error) {
+	// Encode query parameters from the request origin.
+	q, err := params.Encode()
+	if err != nil {
+		return nil, err
 	}
 
-	r.Header.Set("X-Api-Key", k)
-	return nil
+	req, err := http.NewRequest(http.MethodGet, client.RequestURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if client.ctx != nil {
+		req = req.WithContext(client.ctx)
+	}
+
+	// Inject request authentication key.
+	req.Header.Set("X-Api-Key", authKey)
+	req.URL.RawQuery = q
+
+	// Dispatch HTTP request to newsapi.
+	resp, err := dispatchReq(req)
+	if err != nil {
+		return nil, &httperror.HTTPError{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("error while dispatching request: %v", err),
+			DocsURL: client.DocsURL,
+		}
+	}
+	return resp, nil
+}
+
+// dispatchReq dispatches the supplied http.Request.
+//
+// It encodes and return a news.ErrorResponse when an error is encountered.
+// Returns news.Response otherwise for successful requests.
+func dispatchReq(r *http.Request) (*news.Response, error) {
+	resp, err := http.DefaultClient.Do(r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		var res news.ErrorResponse
+		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+			return nil, fmt.Errorf("error decoding response: %v", err)
+		}
+		return nil, &res
+	}
+
+	var res news.Response
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return nil, fmt.Errorf("error decoding response: %v", err)
+	}
+
+	return &res, nil
 }

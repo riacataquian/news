@@ -6,9 +6,12 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/riacataquian/news/api/news"
+	"github.com/riacataquian/news/internal/auth"
 	"github.com/riacataquian/news/internal/clock"
+	"github.com/riacataquian/news/internal/newsclient"
 	"github.com/riacataquian/news/internal/newsclient/list"
 	"github.com/riacataquian/news/internal/store"
 	"github.com/riacataquian/news/web/cron/persistence"
@@ -23,9 +26,11 @@ const (
 )
 
 var (
-	timer      = clock.New()
-	listclient = list.NewClient()
-	repo       = store.New
+	client newsclient.HTTPClient
+
+	timer        = clock.New()
+	repo         = store.New
+	listEndpoint = list.ServiceEndpoint
 )
 
 // topQueried are hard-coded values that represents the top queried news given a domain.
@@ -61,27 +66,32 @@ var topQueried = []TopQueried{
 // Current newsapi plan fetch news anything not older than 7days from now.
 // Future plans includes fetch all data which are 7 days old.
 func List(ctx context.Context, r *http.Request) (*Log, error) {
+	// Requests to external services should timeout for 5 seconds.
+	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	client = newsclient.NewFromContext(reqCtx, listEndpoint)
 	started := timer.Now()
 
 	var queried []TopQueried
 	for _, top := range topQueried {
 		switch domain := top.Key; domain {
 		case domains:
-			params := list.Params{
+			params := &list.Params{
 				Language: defaultLang,
 				Domains:  strings.Join(top.Values, ","),
 			}
-			_, err := fetchAndPersist(ctx, r, params)
+			_, err := fetchAndPersist(ctx, client, params)
 			if err != nil {
 				return nil, err
 			}
 			queried = append(queried, top)
 		case sources:
-			params := list.Params{
+			params := &list.Params{
 				Language: defaultLang,
 				Sources:  strings.Join(top.Values, ","),
 			}
-			_, err := fetchAndPersist(ctx, r, params)
+			_, err := fetchAndPersist(ctx, client, params)
 			if err != nil {
 				return nil, err
 			}
@@ -93,11 +103,11 @@ func List(ctx context.Context, r *http.Request) (*Log, error) {
 				q = append(q, fmt.Sprintf("%q", term))
 			}
 
-			params := list.Params{
+			params := &list.Params{
 				Language: defaultLang,
 				Query:    strings.Join(q, "+"),
 			}
-			_, err := fetchAndPersist(ctx, r, params)
+			_, err := fetchAndPersist(ctx, client, params)
 			if err != nil {
 				return nil, err
 			}
@@ -113,10 +123,15 @@ func List(ctx context.Context, r *http.Request) (*Log, error) {
 	}, nil
 }
 
-// fetchAndPersist connects to newsapi via a listclient
+// fetchAndPersist connects to newsapi via a newsclient
 // then persists the results to the supplied repo.
-func fetchAndPersist(ctx context.Context, r *http.Request, params list.Params) (*news.Response, error) {
-	res, err := listclient.Get(ctx, params)
+func fetchAndPersist(ctx context.Context, client newsclient.HTTPClient, params newsclient.Params) (*news.Response, error) {
+	authKey, err := auth.LookupAndSetAuth()
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := client.Get(authKey, params)
 	if err != nil {
 		return nil, err
 	}
