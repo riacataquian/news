@@ -112,7 +112,6 @@ func TestDispatchReq(t *testing.T) {
 
 func TestDispatchReqErrors(t *testing.T) {
 	want := &news.ErrorResponse{
-		Status:  "internal server error",
 		Code:    "500",
 		Message: "some error",
 	}

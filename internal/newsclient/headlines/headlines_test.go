@@ -32,29 +32,45 @@ func TestEncode(t *testing.T) {
 
 func TestEncodeErrors(t *testing.T) {
 	tests := []struct {
-		desc string
-		in   *Params
+		desc    string
+		in      *Params
+		wantErr error
 	}{
 		{
-			desc: "country can't be mixed with sources param",
-			in:   &Params{Country: "us", Sources: "the-times-of-india"},
+			desc:    "country can't be mixed with sources param",
+			in:      &Params{Country: "us", Sources: "the-times-of-india"},
+			wantErr: ErrMixParams,
 		},
 		{
-			desc: "category can't be mixed with sources param",
-			in:   &Params{Category: "technology", Sources: "the-times-of-india"}},
-		{
-			desc: "pageSize exceeded the maxPageSize",
-			in:   &Params{PageSize: 500, Category: "technology", Sources: "the-times-of-india"},
+			desc:    "category can't be mixed with sources param",
+			in:      &Params{Category: "technology", Sources: "the-times-of-india"},
+			wantErr: ErrMixParams,
 		},
 		{
-			desc: "no required parameter is supplied",
+			desc:    "pageSize exceeded the maxPageSize",
+			in:      &Params{PageSize: 500, Sources: "the-times-of-india"},
+			wantErr: ErrInvalidPageSize,
+		},
+		{
+			desc:    "no required parameter is supplied",
+			in:      &Params{PageSize: 50, Page: 2},
+			wantErr: ErrNoRequiredParams,
+		},
+		{
+			desc:    "no parameter is supplied",
+			wantErr: ErrNoRequiredParams,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			if got, err := test.in.Encode(); err == nil {
-				t.Errorf("%s: Encode(): want (nil, error), got (%v, %v)", test.desc, got, err)
+			got, err := test.in.Encode()
+			if err == nil {
+				t.Fatalf("%s: Encode(): want (nil, %v), got (%v, %v)", test.desc, test.wantErr, got, err)
+			}
+
+			if err != test.wantErr {
+				t.Errorf("%s: Encode(): want (nil, %v), got (%v, %v)", test.desc, test.wantErr, got, err)
 			}
 		})
 	}

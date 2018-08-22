@@ -18,29 +18,26 @@ var (
 )
 
 func TestList(t *testing.T) {
-	fakes, teardown := setup(t, config{
-		isServerValid: true,
-		isClientValid: true,
-	})
+	fakes, teardown := setup(t, config{})
 	listEndpoint = newsclient.ServiceEndpoint{
 		RequestURL: fakes.server.URL,
 		DocsURL:    "http://fake-docs-url",
 	}
 	defer teardown()
 
-	want := &SuccessResponse{
-		Code:       http.StatusOK,
-		Count:      len(fakeResponse.Articles),
-		TotalCount: fakeResponse.TotalResults,
-		Data:       fakeResponse.Articles,
-	}
-
 	req, err := http.NewRequest(http.MethodGet, fakes.server.URL, nil)
-	req.Form = url.Values{"query": {"bitcoin"}}
+	req.Form = url.Values{"query": {"bitcoin"}, "page": {"2"}}
 	if err != nil {
 		t.Fatalf("List(_, _): got error: %v, want nil error", err)
 	}
 
+	want := &SuccessResponse{
+		Code:       http.StatusOK,
+		Count:      len(fakeResponse.Articles),
+		Page:       2,
+		TotalCount: fakeResponse.TotalResults,
+		Data:       fakeResponse.Articles,
+	}
 	desc := "returns the list of news given query parameter"
 	got, err := List(context.Background(), req)
 	if err != nil {
@@ -55,29 +52,22 @@ func TestList(t *testing.T) {
 func TestListErrors(t *testing.T) {
 	tests := []struct {
 		desc          string
-		isServerValid bool
-		isClientValid bool
+		isServerError bool
 		params        url.Values
 	}{
 		{
 			desc:          "returns an error when server errored",
-			isServerValid: false,
-			isClientValid: true,
+			isServerError: true,
 			params:        url.Values{"query": {"valid-query"}},
 		},
 		{
-			desc:          "returns an error when encoding params errored",
-			isClientValid: true,
-			isServerValid: true,
-			params:        url.Values{"unrecognized-key": {"unrecognized-value"}},
+			desc:   "returns an error when encoding params errored",
+			params: url.Values{"unrecognized-key": {"unrecognized-value"}},
 		},
 	}
 
 	for _, test := range tests {
-		fakes, teardown := setup(t, config{
-			isServerValid: test.isServerValid,
-			isClientValid: test.isClientValid,
-		})
+		fakes, teardown := setup(t, config{isServerError: test.isServerError})
 		listEndpoint = newsclient.ServiceEndpoint{
 			RequestURL: fakes.server.URL,
 			DocsURL:    "http://fake-docs-url",
@@ -97,22 +87,12 @@ func TestListErrors(t *testing.T) {
 }
 
 func TestTopHeadlines(t *testing.T) {
-	fakes, teardown := setup(t, config{
-		isServerValid: true,
-		isClientValid: true,
-	})
+	fakes, teardown := setup(t, config{})
 	headlinesEndpoint = newsclient.ServiceEndpoint{
 		RequestURL: fakes.server.URL,
 		DocsURL:    "http://fake-docs-url",
 	}
 	defer teardown()
-
-	want := &SuccessResponse{
-		Code:       http.StatusOK,
-		Count:      len(fakeResponse.Articles),
-		TotalCount: fakeResponse.TotalResults,
-		Data:       fakeResponse.Articles,
-	}
 
 	req, err := http.NewRequest(http.MethodGet, fakes.server.URL, nil)
 	req.Form = url.Values{"query": {"bitcoin"}}
@@ -120,6 +100,13 @@ func TestTopHeadlines(t *testing.T) {
 		t.Fatalf("TopHeadlines(_, _): got error: %v, want nil error", err)
 	}
 
+	want := &SuccessResponse{
+		Code:       http.StatusOK,
+		Count:      len(fakeResponse.Articles),
+		Page:       1,
+		TotalCount: fakeResponse.TotalResults,
+		Data:       fakeResponse.Articles,
+	}
 	desc := "returns the top headlines news given query parameter"
 	got, err := TopHeadlines(context.Background(), req)
 	if err != nil {
@@ -134,29 +121,22 @@ func TestTopHeadlines(t *testing.T) {
 func TestTopHeadlinesErrors(t *testing.T) {
 	tests := []struct {
 		desc          string
-		isServerValid bool
-		isClientValid bool
+		isServerError bool
 		params        url.Values
 	}{
 		{
 			desc:          "returns an error when server errored",
-			isServerValid: false,
-			isClientValid: true,
+			isServerError: true,
 			params:        url.Values{"query": {"bitcoin"}},
 		},
 		{
-			desc:          "returns an error when encoding params errored",
-			isServerValid: true,
-			isClientValid: true,
-			params:        url.Values{"unrecognized-key": {"unrecognized-value"}},
+			desc:   "returns an error when encoding params errored",
+			params: url.Values{"unrecognized-key": {"unrecognized-value"}},
 		},
 	}
 
 	for _, test := range tests {
-		fakes, teardown := setup(t, config{
-			isServerValid: test.isServerValid,
-			isClientValid: test.isClientValid,
-		})
+		fakes, teardown := setup(t, config{isServerError: test.isServerError})
 		headlinesEndpoint = newsclient.ServiceEndpoint{
 			RequestURL: fakes.server.URL,
 			DocsURL:    "http://fake-docs-url",
@@ -176,15 +156,12 @@ func TestTopHeadlinesErrors(t *testing.T) {
 }
 
 func TestFetch(t *testing.T) {
-	_, teardown := setup(t, config{
-		isServerValid: true,
-		isClientValid: true,
-	})
+	_, teardown := setup(t, config{})
 	defer teardown()
 
 	desc := "returns a SuccessResponse with correct Code and RequestURL"
-	want := fakeResponse
 	params := fakeParams{lang: "en"}
+	want := fakeResponse
 	got, err := fetch(params)
 	if err != nil {
 		t.Fatalf("%s: fetch(%v): expecting (%v, nil), got (%v, %v)", desc, params, want, got, err)
@@ -199,28 +176,21 @@ func TestFetchErrors(t *testing.T) {
 	tests := []struct {
 		desc          string
 		params        *fakeParams
-		isServerValid bool
-		isClientValid bool
+		isClientError bool
 	}{
 		{
 			desc:          "returns an error when an error in client is encountered",
 			params:        &fakeParams{},
-			isServerValid: true,
-			isClientValid: false,
+			isClientError: true,
 		},
 		{
-			desc:          "returns an error when an error in params is encountered",
-			params:        &fakeParams{wantErr: true},
-			isServerValid: true,
-			isClientValid: true,
+			desc:   "returns an error when an error in params is encountered",
+			params: &fakeParams{wantErr: true},
 		},
 	}
 
 	for _, test := range tests {
-		_, teardown := setup(t, config{
-			isServerValid: test.isServerValid,
-			isClientValid: test.isClientValid,
-		})
+		_, teardown := setup(t, config{isClientError: test.isClientError})
 		defer teardown()
 
 		if got, err := fetch(test.params); err == nil {

@@ -46,20 +46,21 @@ var fakeResponse = &news.Response{
 
 // fakeclient mocks a newsclient.Client interface.
 type fakeclient struct {
-	isValid bool
+	isError bool
 	serviceEndpoint
 }
 
 func (f *fakeclient) Get(authKey string, p newsclient.Params) (*news.Response, error) {
+	if f.isError {
+		return nil, errors.New("some error")
+	}
+
 	_, err := p.Encode()
 	if err != nil {
 		return nil, err
 	}
 
-	if f.isValid {
-		return fakeResponse, nil
-	}
-	return nil, errors.New("some error")
+	return fakeResponse, nil
 }
 
 // fakeParams mocks a newsclient.Params interface.
@@ -80,11 +81,11 @@ func (fp fakeParams) Read(_ []byte) (n int, err error) {
 	return len(fp.lang), nil
 }
 
-func setupStubServer(t *testing.T, isValid bool) *httptest.Server {
+func setupStubServer(t *testing.T, isError bool) *httptest.Server {
 	t.Helper()
 
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !isValid {
+		if isError {
 			errString := `{"status": "internal server error", "code": "500", "message": "some error"}`
 			http.Error(w, errString, http.StatusNotFound)
 			return
@@ -107,8 +108,8 @@ type teardown func()
 
 // config encapsulates a test's setup configuration.
 type config struct {
-	isServerValid bool
-	isClientValid bool
+	isServerError bool
+	isClientError bool
 }
 
 // fakes encapsulates a test's fake structures.
@@ -124,14 +125,13 @@ func setup(t *testing.T, conf config) (*fakes, teardown) {
 
 	os.Setenv("API_KEY", "test-api-key")
 
-	fakeserver := setupStubServer(t, conf.isServerValid)
+	fakeserver := setupStubServer(t, conf.isServerError)
 	fakeclient := &fakeclient{
-		isValid: conf.isClientValid,
+		isError: conf.isClientError,
 		serviceEndpoint: serviceEndpoint{
 			RequestURL: fakeserver.URL,
 		},
 	}
-
 	client = fakeclient
 
 	fakes := fakes{
@@ -140,7 +140,7 @@ func setup(t *testing.T, conf config) (*fakes, teardown) {
 	}
 
 	teardown := func() {
-		os.Setenv("API_KEY", "")
+		os.Clearenv()
 		fakeserver.Close()
 
 		client = originalClient

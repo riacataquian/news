@@ -47,41 +47,43 @@ var fakeResponse = &news.Response{
 
 // fakeclient mocks a newsclient.Client interface.
 type fakeclient struct {
-	isValid      bool
+	isError      bool
 	withArticles bool
 	serviceEndpoint
 }
 
 func (f *fakeclient) Get(authKey string, p newsclient.Params) (*news.Response, error) {
+	if f.isError {
+		return nil, errors.New("some error")
+	}
+
 	_, err := p.Encode()
 	if err != nil {
 		return nil, err
 	}
+
 	if f.withArticles {
 		return fakeResponse, nil
 	}
 
-	if f.isValid {
-		return &news.Response{Status: "200", TotalResults: 0}, nil
-	}
+	return &news.Response{Status: "200", TotalResults: 0}, nil
 
-	return nil, errors.New("some error")
 }
 
 type fakestore struct {
-	isValid bool
+	isError bool
 	// rows are the supposedly inserted rows.
 	// rows is set after calling fakestore's Create method.
 	rows []store.Row
 }
 
 func (f *fakestore) Create(table string, cols []string, rows ...store.Row) error {
-	if f.isValid {
-		f.rows = append(f.rows, rows...)
-		return nil
+	if f.isError {
+		return errors.New("some store error")
 	}
 
-	return errors.New("some store error")
+	f.rows = append(f.rows, rows...)
+	return nil
 }
 
 type fakeclock struct {
@@ -104,11 +106,11 @@ func toStoreRow(args ...interface{}) store.Row {
 	return r
 }
 
-func setupStubServer(t *testing.T, isServerValid bool) *httptest.Server {
+func setupStubServer(t *testing.T, isServerError bool) *httptest.Server {
 	t.Helper()
 
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !isServerValid {
+		if isServerError {
 			errString := `{"status": "internal server error", "code": "500", "message": "some error"}`
 			http.Error(w, errString, http.StatusNotFound)
 			return
@@ -129,9 +131,10 @@ type serviceEndpoint struct {
 
 // config encapsulates a test's setup configuration.
 type config struct {
-	isServerValid bool
-	isStoreValid  bool
-	clockNanosec  int
+	isServerError   bool
+	isStoreError    bool
+	isAPIKeyMissing bool
+	clockNanosec    int
 }
 
 // fakes encapsulates a test's fake structures.
@@ -148,10 +151,12 @@ type teardown func()
 func setup(t *testing.T, conf config) (*fakes, teardown) {
 	t.Helper()
 
-	os.Setenv("API_KEY", "test-api-key")
+	if !conf.isAPIKeyMissing {
+		os.Setenv("API_KEY", "test-api-key")
+	}
 
-	fakeserver := setupStubServer(t, conf.isServerValid)
-	fakestore := &fakestore{isValid: conf.isStoreValid}
+	fakeserver := setupStubServer(t, conf.isServerError)
+	fakestore := &fakestore{isError: conf.isStoreError}
 	fakeclock := &fakeclock{nsec: conf.clockNanosec}
 
 	timer = fakeclock
@@ -166,7 +171,7 @@ func setup(t *testing.T, conf config) (*fakes, teardown) {
 	}
 
 	teardown := func() {
-		os.Setenv("API_KEY", "")
+		os.Clearenv()
 		fakeserver.Close()
 
 		client = originalClient

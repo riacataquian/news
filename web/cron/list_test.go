@@ -61,12 +61,11 @@ func TestList(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		fakes, teardown := setup(t, config{isServerValid: true, isStoreValid: true})
+		fakes, teardown := setup(t, config{})
 		listEndpoint = newsclient.ServiceEndpoint{
 			RequestURL: fakes.server.URL,
 			DocsURL:    "http://fake-docs-url",
 		}
-		timer = fakeclock{nsec: 123}
 		if len(test.topQueried) > 0 {
 			topQueried = test.topQueried
 		}
@@ -86,16 +85,41 @@ func TestList(t *testing.T) {
 	}
 }
 
+func TestListErrors(t *testing.T) {
+	fakes, teardown := setup(t, config{
+		isAPIKeyMissing: true,
+		clockNanosec:    123,
+	})
+	listEndpoint = newsclient.ServiceEndpoint{
+		RequestURL: fakes.server.URL,
+		DocsURL:    "http://fake-docs-url",
+	}
+	queried := []TopQueried{
+		{
+			Key:    domains,
+			Values: []string{"some", "valid", "terms"},
+		},
+	}
+	if len(queried) > 0 {
+		topQueried = queried
+	}
+	defer teardown()
+
+	r := httptest.NewRequest("GET", "/test", nil)
+	got, err := List(context.Background(), r)
+	if err == nil {
+		desc := "returns an error when API_KEY is missing"
+		t.Errorf("%s: List(_, _): want (_, error), got (%v, %v)", desc, got, err)
+	}
+}
+
 func TestFetchAndPersist(t *testing.T) {
 	tests := []struct {
-		desc          string
-		params        *list.Params
-		isStoreValid  bool
-		isServerValid bool
-		isClientValid bool
-		withArticles  bool
-		wantResponse  *news.Response
-		wantRows      []store.Row
+		desc         string
+		params       *list.Params
+		withArticles bool
+		wantResponse *news.Response
+		wantRows     []store.Row
 	}{
 		{
 			desc: "returns news.Response given list.Params",
@@ -103,11 +127,8 @@ func TestFetchAndPersist(t *testing.T) {
 				Language: defaultLang,
 				Domains:  "some-domain-1,some-domain-2",
 			},
-			isStoreValid:  true,
-			isServerValid: true,
-			isClientValid: true,
-			withArticles:  true,
-			wantResponse:  fakeResponse,
+			withArticles: true,
+			wantResponse: fakeResponse,
 		},
 		{
 			desc: "returns 0 results for news.Response given list.Params",
@@ -115,9 +136,6 @@ func TestFetchAndPersist(t *testing.T) {
 				Language: defaultLang,
 				Domains:  "some-domain-1,some-domain-2",
 			},
-			isStoreValid:  true,
-			isServerValid: true,
-			isClientValid: true,
 			wantResponse: &news.Response{
 				Status:       "200",
 				TotalResults: 0,
@@ -129,10 +147,7 @@ func TestFetchAndPersist(t *testing.T) {
 				Language: defaultLang,
 				Domains:  "some-domain-1,some-domain-2",
 			},
-			isStoreValid:  true,
-			isServerValid: true,
-			isClientValid: true,
-			withArticles:  true,
+			withArticles: true,
 			wantRows: []store.Row{
 				toStoreRow(
 					123,
@@ -168,13 +183,10 @@ func TestFetchAndPersist(t *testing.T) {
 
 	for _, test := range tests {
 		fakes, teardown := setup(t, config{
-			isServerValid: test.isServerValid,
-			isStoreValid:  test.isStoreValid,
-			clockNanosec:  123,
+			clockNanosec: 123,
 		})
 		client = &fakeclient{
 			withArticles: test.withArticles,
-			isValid:      test.isClientValid,
 			serviceEndpoint: serviceEndpoint{
 				RequestURL: fakes.server.URL,
 			},
@@ -202,35 +214,35 @@ func TestFetchAndPersist(t *testing.T) {
 
 func TestFetchAndPersistErrors(t *testing.T) {
 	tests := []struct {
-		desc          string
-		params        *list.Params
-		isServerValid bool
-		isStoreValid  bool
-		isClientValid bool
-		withArticles  bool
+		desc            string
+		params          *list.Params
+		isClientError   bool
+		isStoreError    bool
+		isAPIKeyMissing bool
+		withArticles    bool
 	}{
 		{
-			desc:          "returns an error when client errored",
-			isServerValid: true,
-			isStoreValid:  true,
-			isClientValid: false,
+			desc:            "returns an error when API_KEY is missing",
+			isAPIKeyMissing: true,
 		},
 		{
-			desc:          "returns an error when store errored",
-			isServerValid: true,
-			isStoreValid:  false,
-			isClientValid: true,
-			withArticles:  true,
+			desc:          "returns an error when client errored",
+			isClientError: true,
+		},
+		{
+			desc:         "returns an error when store errored",
+			isStoreError: true,
+			withArticles: true,
 		},
 	}
 
 	for _, test := range tests {
 		fakes, teardown := setup(t, config{
-			isServerValid: test.isServerValid,
-			isStoreValid:  test.isStoreValid,
+			isStoreError:    test.isStoreError,
+			isAPIKeyMissing: test.isAPIKeyMissing,
 		})
 		client = &fakeclient{
-			isValid:      test.isClientValid,
+			isError:      test.isClientError,
 			withArticles: test.withArticles,
 			serviceEndpoint: serviceEndpoint{
 				RequestURL: fakes.server.URL,

@@ -3,7 +3,6 @@ package headlines
 
 import (
 	"errors"
-	"fmt"
 	"net/url"
 	"strconv"
 
@@ -17,6 +16,9 @@ var (
 
 	// ErrNoRequiredParams is the error message if no request parameter is present in the request.
 	ErrNoRequiredParams = errors.New("required parameters are missing: sources, query, language, country, category.")
+
+	// ErrInvalidPageSize is the error message if the supplied maximum page size exceeded the allowed size.
+	ErrInvalidPageSize = errors.New("invalid page, maximum page size is 100")
 
 	// ServiceEndpoint wraps URLs to newsapi's top-headlines endpoint.
 	ServiceEndpoint = newsclient.ServiceEndpoint{
@@ -95,7 +97,7 @@ func (p *Params) Encode() (string, error) {
 
 	if p.PageSize != 0 {
 		if p.PageSize > maxPageSize {
-			return "", fmt.Errorf("the maximum page size is %d, you requested %d", maxPageSize, p.PageSize)
+			return "", ErrInvalidPageSize
 		}
 
 		p := strconv.Itoa(p.PageSize)
