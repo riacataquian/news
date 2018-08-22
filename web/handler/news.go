@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
+	"time"
 
+	"github.com/riacataquian/news/api/news"
+	"github.com/riacataquian/news/internal/auth"
+	"github.com/riacataquian/news/internal/httperror"
 	"github.com/riacataquian/news/internal/newsclient"
 	"github.com/riacataquian/news/internal/newsclient/headlines"
 	"github.com/riacataquian/news/internal/newsclient/list"
@@ -15,66 +18,103 @@ import (
 
 // This file contains handlers for news endpoint.
 
-var client newsclient.Client
+var (
+	client newsclient.HTTPClient
 
-// List is the HTTP handler for news requests.
-// See https://newsapi.org/docs/endpoints/everything for the official documentation.
+	defaultDuration = 5 * time.Second
+
+	listEndpoint      = list.ServiceEndpoint
+	headlinesEndpoint = headlines.ServiceEndpoint
+)
+
+// List is the HTTP handler for news requests to newsapi's everything endpoint.
+//
+// Official docs: https://newsapi.org/docs/endpoints/everything.
 func List(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
 	r.ParseForm()
 
-	client = list.NewClient()
-	dst := new(list.Params)
-	err := schema.NewDecoder().Decode(dst, r.Form)
+	// Requests to external services should have timeouts.
+	reqCtx, cancel := context.WithTimeout(ctx, defaultDuration)
+	defer cancel()
+
+	client = newsclient.NewFromContext(reqCtx, listEndpoint)
+	params := new(list.Params)
+	err := schema.NewDecoder().Decode(params, r.Form)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding params: %v", err)
 	}
 
-	return fetch(ctx, r, client, dst)
+	if params.Page == 0 {
+		params.Page = 1
+	}
+
+	res, err := fetch(params)
+	if err != nil {
+		return nil, &httperror.HTTPError{
+			Code:       http.StatusBadRequest,
+			Message:    err.Error(),
+			RequestURL: r.RequestURI,
+			DocsURL:    listEndpoint.DocsURL,
+		}
+	}
+
+	return &SuccessResponse{
+		Code:       http.StatusOK,
+		RequestURL: r.RequestURI,
+		Count:      len(res.Articles),
+		Page:       params.Page,
+		TotalCount: res.TotalResults,
+		Data:       res.Articles,
+	}, nil
 }
 
-// TopHeadlines is the HTTP handler for top-headlines news requests.
-// See https://newsapi.org/docs/endpoints/top-headlines for the official documentation.
+// TopHeadlines is the HTTP handler for news requests to newsapi's top-headlines endpoint.
+//
+// Official docs: https://newsapi.org/docs/endpoints/top-headlines.
 func TopHeadlines(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
 	r.ParseForm()
 
-	client = headlines.NewClient()
-	dst := new(headlines.Params)
-	err := schema.NewDecoder().Decode(dst, r.Form)
+	// Requests to external services should have timeouts.
+	reqCtx, cancel := context.WithTimeout(ctx, defaultDuration)
+	defer cancel()
+
+	client = newsclient.NewFromContext(reqCtx, headlinesEndpoint)
+	params := new(headlines.Params)
+	err := schema.NewDecoder().Decode(params, r.Form)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding params: %v", err)
 	}
 
-	return fetch(ctx, r, client, dst)
+	if params.Page == 0 {
+		params.Page = 1
+	}
+
+	res, err := fetch(params)
+	if err != nil {
+		return nil, &httperror.HTTPError{
+			Code:       http.StatusBadRequest,
+			Message:    err.Error(),
+			RequestURL: r.RequestURI,
+			DocsURL:    headlinesEndpoint.DocsURL,
+		}
+	}
+
+	return &SuccessResponse{
+		Code:       http.StatusOK,
+		RequestURL: r.RequestURI,
+		Count:      len(res.Articles),
+		Page:       params.Page,
+		TotalCount: res.TotalResults,
+		Data:       res.Articles,
+	}, nil
 }
 
 // fetch performs the request to the client given params.
-func fetch(ctx context.Context, r *http.Request, client newsclient.Client, params newsclient.Params) (*SuccessResponse, error) {
-	news, err := client.Get(ctx, params)
+func fetch(params newsclient.Params) (*news.Response, error) {
+	authKey, err := auth.LookupAndSetAuth()
 	if err != nil {
 		return nil, err
 	}
-	resp := &SuccessResponse{Data: news}
 
-	qp := r.URL.Query()
-	ps := qp.Get("pageSize")
-	if ps != "" {
-		count, err := strconv.Atoi(ps)
-		if err != nil {
-			return nil, fmt.Errorf("invalid page size value: %v", ps)
-		}
-		resp.Count = count
-	}
-
-	p := qp.Get("page")
-	if p != "" {
-		page, err := strconv.Atoi(p)
-		if err != nil {
-			return nil, fmt.Errorf("invalid page value: %v", p)
-		}
-		resp.Page = page
-	}
-
-	resp.Code = http.StatusOK
-	resp.RequestURL = r.URL.String()
-	return resp, nil
+	return client.Get(authKey, params)
 }

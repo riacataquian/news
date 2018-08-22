@@ -1,31 +1,27 @@
-// Package list handles querying and interacting with newsapi's everything endpoint.
+// Package list contains constants, endpoints, params and errors for news list.
 package list
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"net/http"
 	"net/url"
 	"strconv"
-	"time"
 
-	"github.com/riacataquian/news/api/news"
-	"github.com/riacataquian/news/internal/httperror"
 	"github.com/riacataquian/news/internal/newsclient"
 )
 
-// PathPrefix is newsapi's everything endpoint prefix.
-const PathPrefix = "/everything"
+var (
+	// ErrNoRequiredParams is the error message if no request parameter is present in the request.
+	ErrNoRequiredParams = errors.New("required parameters are missing: query, sources, domains.")
 
-const maxPageSize = 100
+	// ErrInvalidPageSize is the error message if the supplied maximum page size exceeded the allowed size.
+	ErrInvalidPageSize = errors.New("invalid page, maximum page size is 100")
 
-// ErrNoRequiredParams is the error message if no request parameter is present in the request.
-const ErrNoRequiredParams = "required parameters are missing: query, sources, domains."
-
-// Endpoint is the request endpoint.
-var Endpoint = newsclient.APIBaseURL + PathPrefix
+	// ServiceEndpoint wraps URLs to newsapi's everything endpoint.
+	ServiceEndpoint = newsclient.ServiceEndpoint{
+		RequestURL: "https://newsapi.org/v2/everything",
+		DocsURL:    "https://newsapi.org/docs/endpoints/everything",
+	}
+)
 
 // Sorting is the order to sort articles in.
 type Sorting string
@@ -37,6 +33,8 @@ const (
 	Popularity Sorting = "popularity"
 	// PublishedAt means newest articles comes first.
 	PublishedAt Sorting = "publishedAt"
+	// maxPageSize is the maximum page size for requesting list news.
+	maxPageSize = 100
 )
 
 // Params is the request parameters for list news request.
@@ -66,111 +64,14 @@ type Params struct {
 	Page     int     `schema:"page"`
 }
 
-// Client is an HTTP newsapi client.
-//
-// Client satisfies the newsclient.Client interface.
-type Client struct {
-	newsclient.ServiceEndpoint
-}
-
-// NewClient returns a new list.Client.
-func NewClient() newsclient.Client {
-	return &Client{
-		ServiceEndpoint: newsclient.ServiceEndpoint{
-			URL: Endpoint,
-		},
-	}
-}
-
-// Get dispatches an HTTP GET request to the newsapi's everything endpoint.
-// It times out after 5 seconds.
-//
-// It looks up for an env variable API_KEY and when found, set it to the request's header,
-// it then encodes params and set is as the request's query parameter.
-//
-// Finally, it dispatches the request by calling DispatchRequest method
-// then encode the response accordingly.
-func (c *Client) Get(ctxOrigin context.Context, params newsclient.Params) (*news.Response, error) {
-	ctx, cancel := context.WithTimeout(ctxOrigin, 5*time.Second)
-	defer cancel()
-
-	req, err := http.NewRequest(http.MethodGet, c.URL, nil)
-	if err != nil {
-		return nil, &httperror.HTTPError{
-			Code:    http.StatusBadRequest,
-			Message: fmt.Sprintf("getting news list: %v", err),
-			DocsURL: newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
-		}
-	}
-
-	// Requests to external services should timeout for 5 seconds.
-	req = req.WithContext(ctx)
-
-	// Find and set request's API_KEY header.
-	err = newsclient.LookupAndSetAuth(req)
-	if err != nil {
-		return nil, &httperror.HTTPError{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-			DocsURL: newsclient.DocsBaseURL + "/authentication",
-		}
-	}
-
-	// Encode query parameters from the request origin.
-	q, err := params.Encode()
-	if err != nil {
-		return nil, &httperror.HTTPError{
-			Code:    http.StatusBadRequest,
-			Message: fmt.Sprintf("encoding query parameters: %v", err),
-			DocsURL: newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
-		}
-	}
-	req.URL.RawQuery = q
-
-	// Dispatch request to newsapi.
-	resp, err := c.DispatchRequest(ctx, req)
-	if err != nil {
-		return nil, &httperror.HTTPError{
-			Code:    http.StatusBadRequest,
-			Message: fmt.Sprintf("fetching news: %v", err),
-			DocsURL: newsclient.DocsBaseURL + "/endpoints" + PathPrefix,
-		}
-	}
-
-	return resp, nil
-}
-
-// DispatchRequest dispatches given r http.Request.
-//
-// It encodes and return a news.ErrorResponse when an error is encountered.
-// Returns news.Response otherwise for successful requests.
-func (c *Client) DispatchRequest(_ context.Context, r *http.Request) (*news.Response, error) {
-	resp, err := http.DefaultClient.Do(r)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var res news.ErrorResponse
-		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-			return nil, fmt.Errorf("error decoding response: %v", err)
-		}
-		return nil, &res
-	}
-
-	var res news.Response
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		return nil, fmt.Errorf("error decoding response: %v", err)
-	}
-
-	return &res, nil
-}
-
-// Encode encodes a p Params into a query string format. (e.g., foo=bar&wat=lol)
+// Encode encodes an list's Params into a query string format. (e.g., foo=bar&wat=lol)
 //
 // It implements newsclient.Params interface.
-func (p Params) Encode() (string, error) {
+func (p *Params) Encode() (string, error) {
+	if p == nil {
+		return "", ErrNoRequiredParams
+	}
+
 	q := url.Values{}
 
 	if p.Query != "" {
@@ -210,7 +111,7 @@ func (p Params) Encode() (string, error) {
 	// At this point, after all required parameters are evaluated and none is present,
 	// return an ErrNoRequiredParams error.
 	if q.Encode() == "" {
-		return "", errors.New(ErrNoRequiredParams)
+		return "", ErrNoRequiredParams
 	}
 
 	if p.Page != 0 {
@@ -220,7 +121,7 @@ func (p Params) Encode() (string, error) {
 
 	if p.PageSize != 0 {
 		if p.PageSize > maxPageSize {
-			return "", fmt.Errorf("the maximum page size is %d, you requested %d", maxPageSize, p.PageSize)
+			return "", ErrInvalidPageSize
 		}
 
 		p := strconv.Itoa(p.PageSize)

@@ -9,9 +9,9 @@ import (
 type HTTPError struct {
 	Code        int           `json:"statusCode"`
 	Message     string        `json:"message"`
-	RequestURL  string        `json:"requestUrl"`
-	DocsURL     string        `json:"docsUrl"`
-	FieldErrors []FieldErrors `json:"errors"`
+	RequestURL  string        `json:"requestUrl,omitempty"`
+	DocsURL     string        `json:"docsUrl,omitempty"`
+	FieldErrors []FieldErrors `json:"errors,omitempty"`
 }
 
 // FieldErrors is a generic error object.

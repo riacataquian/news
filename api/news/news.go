@@ -36,12 +36,11 @@ type Source struct {
 //
 // It satisfies the error interface.
 type ErrorResponse struct {
-	Status  string `json:"status"`
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }
 
 // Error is ErrorResponse's error interface implementation.
-func (e ErrorResponse) Error() string {
+func (e *ErrorResponse) Error() string {
 	return e.Message
 }

@@ -2,193 +2,199 @@ package handler
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"net/http"
-	"net/http/httptest"
+	"net/url"
 	"testing"
-	"time"
-
-	"github.com/riacataquian/news/api/news"
-	"github.com/riacataquian/news/internal/newsclient"
 
 	"github.com/kylelemons/godebug/pretty"
+	"github.com/riacataquian/news/internal/newsclient"
 )
 
-var originalClient = client
+var (
+	originalClient            = client
+	originalDefaultDuration   = defaultDuration
+	originalHeadlinesEndpoint = headlinesEndpoint
+	originalListEndpoint      = listEndpoint
+)
 
-type config struct {
-	ctx         context.Context
-	req         *http.Request
-	queryParams string
-	isValid     bool
-}
-
-// FakeParams mocks a newsclient.Params interface.
-type FakeParams string
-
-func (fp FakeParams) Encode() (string, error) {
-	return "sources=bloomberg,financial-times", nil
-}
-
-// FakeClient mocks a newsclient.Client interface.
-type FakeClient struct {
-	newsclient.ServiceEndpoint
-	RequestOrigin *http.Request
-	IsValid       bool
-}
-
-func (f FakeClient) Get(_ context.Context, p newsclient.Params) (*news.Response, error) {
-	if f.IsValid {
-		return &news.Response{
-			Status:       "200",
-			TotalResults: 2,
-			Articles: []*news.News{
-				{
-					Source: &news.Source{
-						ID:   "bloomberg",
-						Name: "Bloomberg",
-					},
-					Author:      "some-author",
-					Title:       "some-title",
-					Description: "some-description",
-					URL:         "some-URL",
-					ImageURL:    "some-image-url",
-					PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
-				},
-				{
-					Source: &news.Source{
-						ID:   "financial-times",
-						Name: "Financial Times",
-					},
-					Author:      "some-author",
-					Title:       "some-title",
-					Description: "some-description",
-					URL:         "some-URL",
-					ImageURL:    "some-image-url",
-					PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
-				},
-			},
-		}, nil
+func TestList(t *testing.T) {
+	fakes, teardown := setup(t, config{})
+	listEndpoint = newsclient.ServiceEndpoint{
+		RequestURL: fakes.server.URL,
+		DocsURL:    "http://fake-docs-url",
 	}
-	return nil, errors.New("some error")
-}
+	defer teardown()
 
-func (f FakeClient) DispatchRequest(_ context.Context, r *http.Request) (*news.Response, error) {
-	if f.IsValid {
-		return &news.Response{
-			Status:       "200",
-			TotalResults: 1,
-			Articles: []*news.News{
-				{
-					Source: &news.Source{
-						ID:   "bloomberg",
-						Name: "Bloomberg",
-					},
-					Author:      "some-author",
-					Title:       "some-title",
-					Description: "some-description",
-					URL:         "some-URL",
-					ImageURL:    "some-image-url",
-					PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
-				},
-			},
-		}, nil
+	req, err := http.NewRequest(http.MethodGet, fakes.server.URL, nil)
+	req.Form = url.Values{"query": {"bitcoin"}, "page": {"2"}}
+	if err != nil {
+		t.Fatalf("List(_, _): got error: %v, want nil error", err)
 	}
-
-	return nil, errors.New("failed request")
-}
-
-func setupFakeClient(t *testing.T, conf config) FakeClient {
-	t.Helper()
-
-	return FakeClient{
-		ServiceEndpoint: newsclient.ServiceEndpoint{
-			URL: "test-url",
-		},
-		RequestOrigin: conf.req,
-		IsValid:       conf.isValid,
-	}
-}
-
-func teardown(t *testing.T) {
-	t.Helper()
-	client = originalClient
-}
-
-func TestFetch(t *testing.T) {
-	q := "sources=bloomberg,financial-times"
-	conf := config{
-		ctx:         context.Background(),
-		req:         httptest.NewRequest("GET", fmt.Sprintf("/test?%s", q), nil),
-		queryParams: q,
-		isValid:     true,
-	}
-	client = setupFakeClient(t, conf)
-	defer teardown(t)
 
 	want := &SuccessResponse{
 		Code:       http.StatusOK,
-		RequestURL: "/test?sources=bloomberg,financial-times",
-		Data: &news.Response{
-			Status:       "200",
-			TotalResults: 2,
-			Articles: []*news.News{
-				{
-					Source: &news.Source{
-						ID:   "bloomberg",
-						Name: "Bloomberg",
-					},
-					Author:      "some-author",
-					Title:       "some-title",
-					Description: "some-description",
-					URL:         "some-URL",
-					ImageURL:    "some-image-url",
-					PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
-				},
-				{
-					Source: &news.Source{
-						ID:   "financial-times",
-						Name: "Financial Times",
-					},
-					Author:      "some-author",
-					Title:       "some-title",
-					Description: "some-description",
-					URL:         "some-URL",
-					ImageURL:    "some-image-url",
-					PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
-				},
-			},
-		},
+		Count:      len(fakeResponse.Articles),
+		Page:       2,
+		TotalCount: fakeResponse.TotalResults,
+		Data:       fakeResponse.Articles,
 	}
-
-	params := FakeParams(conf.queryParams)
-	got, err := fetch(conf.ctx, conf.req, client, params)
+	desc := "returns the list of news given query parameter"
+	got, err := List(context.Background(), req)
 	if err != nil {
-		t.Errorf("fetch(_, _, _, %v): expecting (%v, nil), got (%v, %v)", params, want, got, err)
+		t.Fatalf("%s: List(_, _): want(%v, nil), got (%v, %v)", desc, want, got, err)
 	}
 
 	if diff := pretty.Compare(got, want); diff != "" {
-		desc := "returns a SuccessResponse with correct Code and RequestURL"
-		t.Errorf("%s: fetch(_, _, _, %v), diff: (-got +want)\n%s", desc, params, diff)
+		t.Errorf("%s: List(_, _) diff: (-got +want)\n%s", desc, diff)
+	}
+}
+
+func TestListErrors(t *testing.T) {
+	tests := []struct {
+		desc          string
+		isServerError bool
+		params        url.Values
+	}{
+		{
+			desc:          "returns an error when server errored",
+			isServerError: true,
+			params:        url.Values{"query": {"valid-query"}},
+		},
+		{
+			desc:   "returns an error when encoding params errored",
+			params: url.Values{"unrecognized-key": {"unrecognized-value"}},
+		},
+	}
+
+	for _, test := range tests {
+		fakes, teardown := setup(t, config{isServerError: test.isServerError})
+		listEndpoint = newsclient.ServiceEndpoint{
+			RequestURL: fakes.server.URL,
+			DocsURL:    "http://fake-docs-url",
+		}
+		defer teardown()
+
+		req, err := http.NewRequest(http.MethodGet, fakes.server.URL, nil)
+		req.Form = test.params
+		if err != nil {
+			t.Fatalf("List(_, _): got error: %v, want nil error", err)
+		}
+
+		if got, err := List(context.Background(), req); err == nil {
+			t.Errorf("%s: List(_, _), expecting (nil, error), got (%v, %v)", test.desc, got, err)
+		}
+	}
+}
+
+func TestTopHeadlines(t *testing.T) {
+	fakes, teardown := setup(t, config{})
+	headlinesEndpoint = newsclient.ServiceEndpoint{
+		RequestURL: fakes.server.URL,
+		DocsURL:    "http://fake-docs-url",
+	}
+	defer teardown()
+
+	req, err := http.NewRequest(http.MethodGet, fakes.server.URL, nil)
+	req.Form = url.Values{"query": {"bitcoin"}}
+	if err != nil {
+		t.Fatalf("TopHeadlines(_, _): got error: %v, want nil error", err)
+	}
+
+	want := &SuccessResponse{
+		Code:       http.StatusOK,
+		Count:      len(fakeResponse.Articles),
+		Page:       1,
+		TotalCount: fakeResponse.TotalResults,
+		Data:       fakeResponse.Articles,
+	}
+	desc := "returns the top headlines news given query parameter"
+	got, err := TopHeadlines(context.Background(), req)
+	if err != nil {
+		t.Fatalf("%s: TopHeadlines(_, _): want(%v, nil), got (%v, %v)", desc, want, got, err)
+	}
+
+	if diff := pretty.Compare(got, want); diff != "" {
+		t.Errorf("%s: TopHeadlines(_, _) diff: (-got +want)\n%s", desc, diff)
+	}
+}
+
+func TestTopHeadlinesErrors(t *testing.T) {
+	tests := []struct {
+		desc          string
+		isServerError bool
+		params        url.Values
+	}{
+		{
+			desc:          "returns an error when server errored",
+			isServerError: true,
+			params:        url.Values{"query": {"bitcoin"}},
+		},
+		{
+			desc:   "returns an error when encoding params errored",
+			params: url.Values{"unrecognized-key": {"unrecognized-value"}},
+		},
+	}
+
+	for _, test := range tests {
+		fakes, teardown := setup(t, config{isServerError: test.isServerError})
+		headlinesEndpoint = newsclient.ServiceEndpoint{
+			RequestURL: fakes.server.URL,
+			DocsURL:    "http://fake-docs-url",
+		}
+		defer teardown()
+
+		req, err := http.NewRequest(http.MethodGet, fakes.server.URL, nil)
+		req.Form = test.params
+		if err != nil {
+			t.Fatalf("TopHeadlines(_, _): got error: %v, want nil error", err)
+		}
+
+		if got, err := TopHeadlines(context.Background(), req); err == nil {
+			t.Errorf("%s: TopHeadlines(_, _), expecting (nil, error), got (%v, %v)", test.desc, got, err)
+		}
+	}
+}
+
+func TestFetch(t *testing.T) {
+	_, teardown := setup(t, config{})
+	defer teardown()
+
+	desc := "returns a SuccessResponse with correct Code and RequestURL"
+	params := fakeParams{lang: "en"}
+	want := fakeResponse
+	got, err := fetch(params)
+	if err != nil {
+		t.Fatalf("%s: fetch(%v): expecting (%v, nil), got (%v, %v)", desc, params, want, got, err)
+	}
+
+	if diff := pretty.Compare(got, want); diff != "" {
+		t.Errorf("%s: fetch(%v), diff: (-got +want)\n%s", desc, params, diff)
 	}
 }
 
 func TestFetchErrors(t *testing.T) {
-	q := "sources=bloomberg,financial-times"
-	conf := config{
-		ctx:         context.Background(),
-		req:         httptest.NewRequest("GET", fmt.Sprintf("/test?%s", q), nil),
-		queryParams: q,
-		isValid:     false,
+	tests := []struct {
+		desc          string
+		params        *fakeParams
+		isClientError bool
+	}{
+		{
+			desc:          "returns an error when an error in client is encountered",
+			params:        &fakeParams{},
+			isClientError: true,
+		},
+		{
+			desc:   "returns an error when an error in params is encountered",
+			params: &fakeParams{wantErr: true},
+		},
 	}
-	client = setupFakeClient(t, conf)
-	defer teardown(t)
 
-	params := FakeParams(conf.queryParams)
-	got, err := fetch(conf.ctx, conf.req, client, params)
-	if err == nil {
-		desc := "returns nil SuccessResponse when an error is encountered"
-		t.Errorf("%s: fetch(_, _, _, %v), expecting (nil, error), got (%v, %v)", desc, params, got, err)
+	for _, test := range tests {
+		_, teardown := setup(t, config{isClientError: test.isClientError})
+		defer teardown()
+
+		if got, err := fetch(test.params); err == nil {
+			t.Errorf("%s: fetch(%v), expecting (nil, error), got (%v, %v)", test.desc, test.params, got, err)
+		}
 	}
 }
