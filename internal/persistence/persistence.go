@@ -8,17 +8,17 @@ import (
 	"github.com/riacataquian/news/internal/store"
 )
 
-// News ...
+// News describes a news object.
 type News struct {
 	*news.News
 }
 
-// Source ...
+// Source describes a news source.
 type Source struct {
 	*news.Source
 }
 
-// ScanRow ...
+// ScanRow scans a newsapi's news object into News.
 func ScanRow(row *news.News) *News {
 	return &News{
 		News: &news.News{
