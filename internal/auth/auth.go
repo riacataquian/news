@@ -11,8 +11,9 @@ var (
 	ErrMissingAPIKey = errors.New("missing API key in the environment")
 )
 
-// LookupAndSetAuth sets the env variable API_KEY in the supplied request.
-func LookupAndSetAuth() (string, error) {
+// LookupAPIAuthKey lookups the env variable API_KEY,
+// returns an ErrMissingAPIKey if not found.
+func LookupAPIAuthKey() (string, error) {
 	k, ok := os.LookupEnv("API_KEY")
 	if !ok {
 		return "", ErrMissingAPIKey

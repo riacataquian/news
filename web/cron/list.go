@@ -29,7 +29,6 @@ var (
 	client newsclient.HTTPClient
 
 	timer        = clock.New()
-	repo         = store.New
 	listEndpoint = list.ServiceEndpoint
 )
 
@@ -65,7 +64,7 @@ var topQueried = []TopQueried{
 // NOTE:
 // Current newsapi plan fetch news anything not older than 7days from now.
 // Future plans includes fetch all data which are 7 days old.
-func List(ctx context.Context, r *http.Request) (*Log, error) {
+func List(ctx context.Context, repo store.Store, r *http.Request) (*Log, error) {
 	// Requests to external services should timeout for 5 seconds.
 	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -81,7 +80,7 @@ func List(ctx context.Context, r *http.Request) (*Log, error) {
 				Language: defaultLang,
 				Domains:  strings.Join(top.Values, ","),
 			}
-			_, err := fetchAndPersist(ctx, client, params)
+			_, err := fetchAndPersist(ctx, repo, client, params)
 			if err != nil {
 				return nil, err
 			}
@@ -91,7 +90,7 @@ func List(ctx context.Context, r *http.Request) (*Log, error) {
 				Language: defaultLang,
 				Sources:  strings.Join(top.Values, ","),
 			}
-			_, err := fetchAndPersist(ctx, client, params)
+			_, err := fetchAndPersist(ctx, repo, client, params)
 			if err != nil {
 				return nil, err
 			}
@@ -107,7 +106,7 @@ func List(ctx context.Context, r *http.Request) (*Log, error) {
 				Language: defaultLang,
 				Query:    strings.Join(q, "+"),
 			}
-			_, err := fetchAndPersist(ctx, client, params)
+			_, err := fetchAndPersist(ctx, repo, client, params)
 			if err != nil {
 				return nil, err
 			}
@@ -125,8 +124,8 @@ func List(ctx context.Context, r *http.Request) (*Log, error) {
 
 // fetchAndPersist connects to newsapi via a newsclient
 // then persists the results to the supplied repo.
-func fetchAndPersist(ctx context.Context, client newsclient.HTTPClient, params newsclient.Params) (*news.Response, error) {
-	authKey, err := auth.LookupAndSetAuth()
+func fetchAndPersist(ctx context.Context, repo store.Store, client newsclient.HTTPClient, params newsclient.Params) (*news.Response, error) {
+	authKey, err := auth.LookupAPIAuthKey()
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +136,7 @@ func fetchAndPersist(ctx context.Context, client newsclient.HTTPClient, params n
 	}
 
 	if len(res.Articles) > 0 {
-		err := persistence.Create(ctx, repo(), timer, res.Articles)
+		err := persistence.Create(ctx, repo, timer, res.Articles)
 		if err != nil {
 			return nil, err
 		}

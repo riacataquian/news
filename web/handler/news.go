@@ -12,6 +12,7 @@ import (
 	"github.com/riacataquian/news/internal/newsclient"
 	"github.com/riacataquian/news/internal/newsclient/headlines"
 	"github.com/riacataquian/news/internal/newsclient/list"
+	"github.com/riacataquian/news/internal/store"
 
 	"github.com/gorilla/schema"
 )
@@ -30,7 +31,7 @@ var (
 // List is the HTTP handler for news requests to newsapi's everything endpoint.
 //
 // Official docs: https://newsapi.org/docs/endpoints/everything.
-func List(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
+func List(ctx context.Context, _ store.Store, r *http.Request) (*SuccessResponse, error) {
 	r.ParseForm()
 
 	// Requests to external services should have timeouts.
@@ -71,7 +72,7 @@ func List(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
 // TopHeadlines is the HTTP handler for news requests to newsapi's top-headlines endpoint.
 //
 // Official docs: https://newsapi.org/docs/endpoints/top-headlines.
-func TopHeadlines(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
+func TopHeadlines(ctx context.Context, _ store.Store, r *http.Request) (*SuccessResponse, error) {
 	r.ParseForm()
 
 	// Requests to external services should have timeouts.
@@ -111,7 +112,7 @@ func TopHeadlines(ctx context.Context, r *http.Request) (*SuccessResponse, error
 
 // fetch performs the request to the client given params.
 func fetch(params newsclient.Params) (*news.Response, error) {
-	authKey, err := auth.LookupAndSetAuth()
+	authKey, err := auth.LookupAPIAuthKey()
 	if err != nil {
 		return nil, err
 	}

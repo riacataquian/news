@@ -39,13 +39,13 @@ func TestList(t *testing.T) {
 		Data:       fakeResponse.Articles,
 	}
 	desc := "returns the list of news given query parameter"
-	got, err := List(context.Background(), req)
+	got, err := List(context.Background(), fakes.store, req)
 	if err != nil {
-		t.Fatalf("%s: List(_, _): want(%v, nil), got (%v, %v)", desc, want, got, err)
+		t.Fatalf("%s: List(_, _, _): want(%v, nil), got (%v, %v)", desc, want, got, err)
 	}
 
 	if diff := pretty.Compare(got, want); diff != "" {
-		t.Errorf("%s: List(_, _) diff: (-got +want)\n%s", desc, diff)
+		t.Errorf("%s: List(_, _, _) diff: (-got +want)\n%s", desc, diff)
 	}
 }
 
@@ -77,11 +77,11 @@ func TestListErrors(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, fakes.server.URL, nil)
 		req.Form = test.params
 		if err != nil {
-			t.Fatalf("List(_, _): got error: %v, want nil error", err)
+			t.Fatalf("List(_, _, _): got error: %v, want nil error", err)
 		}
 
-		if got, err := List(context.Background(), req); err == nil {
-			t.Errorf("%s: List(_, _), expecting (nil, error), got (%v, %v)", test.desc, got, err)
+		if got, err := List(context.Background(), fakes.store, req); err == nil {
+			t.Errorf("%s: List(_, _, _), expecting (nil, error), got (%v, %v)", test.desc, got, err)
 		}
 	}
 }
@@ -97,7 +97,7 @@ func TestTopHeadlines(t *testing.T) {
 	req, err := http.NewRequest(http.MethodGet, fakes.server.URL, nil)
 	req.Form = url.Values{"query": {"bitcoin"}}
 	if err != nil {
-		t.Fatalf("TopHeadlines(_, _): got error: %v, want nil error", err)
+		t.Fatalf("TopHeadlines(_, _, _): got error: %v, want nil error", err)
 	}
 
 	want := &SuccessResponse{
@@ -108,13 +108,13 @@ func TestTopHeadlines(t *testing.T) {
 		Data:       fakeResponse.Articles,
 	}
 	desc := "returns the top headlines news given query parameter"
-	got, err := TopHeadlines(context.Background(), req)
+	got, err := TopHeadlines(context.Background(), fakes.store, req)
 	if err != nil {
-		t.Fatalf("%s: TopHeadlines(_, _): want(%v, nil), got (%v, %v)", desc, want, got, err)
+		t.Fatalf("%s: TopHeadlines(_, _, _): want(%v, nil), got (%v, %v)", desc, want, got, err)
 	}
 
 	if diff := pretty.Compare(got, want); diff != "" {
-		t.Errorf("%s: TopHeadlines(_, _) diff: (-got +want)\n%s", desc, diff)
+		t.Errorf("%s: TopHeadlines(_, _, _) diff: (-got +want)\n%s", desc, diff)
 	}
 }
 
@@ -146,11 +146,11 @@ func TestTopHeadlinesErrors(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, fakes.server.URL, nil)
 		req.Form = test.params
 		if err != nil {
-			t.Fatalf("TopHeadlines(_, _): got error: %v, want nil error", err)
+			t.Fatalf("TopHeadlines(_, _, _): got error: %v, want nil error", err)
 		}
 
-		if got, err := TopHeadlines(context.Background(), req); err == nil {
-			t.Errorf("%s: TopHeadlines(_, _), expecting (nil, error), got (%v, %v)", test.desc, got, err)
+		if got, err := TopHeadlines(context.Background(), fakes.store, req); err == nil {
+			t.Errorf("%s: TopHeadlines(_, _, _), expecting (nil, error), got (%v, %v)", test.desc, got, err)
 		}
 	}
 }

@@ -160,9 +160,6 @@ func setup(t *testing.T, conf config) (*fakes, teardown) {
 	fakeclock := &fakeclock{nsec: conf.clockNanosec}
 
 	timer = fakeclock
-	repo = func() store.Store {
-		return fakestore
-	}
 
 	fakes := fakes{
 		server: fakeserver,
@@ -175,7 +172,6 @@ func setup(t *testing.T, conf config) (*fakes, teardown) {
 		fakeserver.Close()
 
 		client = originalClient
-		repo = originalRepo
 		timer = originalTimer
 		topQueried = originalTopQueried
 	}
