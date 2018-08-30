@@ -162,13 +162,13 @@ func TestFetch(t *testing.T) {
 	desc := "returns a SuccessResponse with correct Code and RequestURL"
 	params := fakeParams{lang: "en"}
 	want := fakeResponse
-	got, err := fetch(params)
+	got, err := fetch(context.Background(), params)
 	if err != nil {
-		t.Fatalf("%s: fetch(%v): expecting (%v, nil), got (%v, %v)", desc, params, want, got, err)
+		t.Fatalf("%s: fetch(_, %v): expecting (%v, nil), got (%v, %v)", desc, params, want, got, err)
 	}
 
 	if diff := pretty.Compare(got, want); diff != "" {
-		t.Errorf("%s: fetch(%v), diff: (-got +want)\n%s", desc, params, diff)
+		t.Errorf("%s: fetch(_, %v), diff: (-got +want)\n%s", desc, params, diff)
 	}
 }
 
@@ -193,8 +193,8 @@ func TestFetchErrors(t *testing.T) {
 		_, teardown := setup(t, config{isClientError: test.isClientError})
 		defer teardown()
 
-		if got, err := fetch(test.params); err == nil {
-			t.Errorf("%s: fetch(%v), expecting (nil, error), got (%v, %v)", test.desc, test.params, got, err)
+		if got, err := fetch(context.Background(), test.params); err == nil {
+			t.Errorf("%s: fetch(_, %v), expecting (nil, error), got (%v, %v)", test.desc, test.params, got, err)
 		}
 	}
 }

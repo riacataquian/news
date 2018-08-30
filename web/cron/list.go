@@ -130,7 +130,7 @@ func fetchAndPersist(ctx context.Context, repo store.Store, client newsclient.HT
 		return nil, err
 	}
 
-	res, err := client.Get(authKey, params)
+	res, err := client.Get(ctx, authKey, params)
 	if err != nil {
 		return nil, err
 	}

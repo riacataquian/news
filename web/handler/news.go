@@ -49,7 +49,7 @@ func List(ctx context.Context, _ store.Store, r *http.Request) (*SuccessResponse
 		params.Page = 1
 	}
 
-	res, err := fetch(params)
+	res, err := fetch(ctx, params)
 	if err != nil {
 		return nil, &httperror.HTTPError{
 			Code:       http.StatusBadRequest,
@@ -90,7 +90,7 @@ func TopHeadlines(ctx context.Context, _ store.Store, r *http.Request) (*Success
 		params.Page = 1
 	}
 
-	res, err := fetch(params)
+	res, err := fetch(ctx, params)
 	if err != nil {
 		return nil, &httperror.HTTPError{
 			Code:       http.StatusBadRequest,
@@ -111,11 +111,11 @@ func TopHeadlines(ctx context.Context, _ store.Store, r *http.Request) (*Success
 }
 
 // fetch performs the request to the client given params.
-func fetch(params newsclient.Params) (*news.Response, error) {
+func fetch(ctx context.Context, params newsclient.Params) (*news.Response, error) {
 	authKey, err := auth.LookupAPIAuthKey()
 	if err != nil {
 		return nil, err
 	}
 
-	return client.Get(authKey, params)
+	return client.Get(ctx, authKey, params)
 }

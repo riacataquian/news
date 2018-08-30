@@ -19,7 +19,7 @@ type Params interface {
 
 // HTTPClient describes an HTTP client.
 type HTTPClient interface {
-	Get(string, Params) (*news.Response, error)
+	Get(context.Context, string, Params) (*news.Response, error)
 }
 
 // ServiceEndpoint wraps the URLs for newsapi endpoints.
@@ -50,7 +50,7 @@ func NewFromContext(ctx context.Context, se ServiceEndpoint) *Client {
 // This can be used to enforce timeouts and cancellations.
 //
 // The request's `X-Api-Key` header is set with the supplied authKey.
-func (client *Client) Get(authKey string, params Params) (*news.Response, error) {
+func (client *Client) Get(ctx context.Context, authKey string, params Params) (*news.Response, error) {
 	// Encode query parameters from the request origin.
 	q, err := params.Encode()
 	if err != nil {
@@ -61,10 +61,7 @@ func (client *Client) Get(authKey string, params Params) (*news.Response, error)
 	if err != nil {
 		return nil, err
 	}
-
-	if client.ctx != nil {
-		req = req.WithContext(client.ctx)
-	}
+	req = req.WithContext(ctx)
 
 	// Inject request authentication key.
 	req.Header.Set("X-Api-Key", authKey)

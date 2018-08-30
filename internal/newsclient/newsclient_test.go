@@ -47,7 +47,7 @@ func TestGet(t *testing.T) {
 	testAuthKey := "test-auth-key"
 	params := fakeParams{lang: "en"}
 
-	got, err := client.Get(testAuthKey, params)
+	got, err := client.Get(context.Background(), testAuthKey, params)
 	if err != nil {
 		t.Fatalf("Get(%s, %v): want (%v, nil), got (%v, %v)", testAuthKey, params, want, got, err)
 	}
@@ -82,7 +82,7 @@ func TestGetErrors(t *testing.T) {
 
 			client := setupFakeClient(server.URL)
 			testAuthKey := "test-auth-key"
-			if got, err := client.Get(testAuthKey, test.params); err == nil {
+			if got, err := client.Get(context.Background(), testAuthKey, test.params); err == nil {
 				t.Errorf("%s: Get(%s, %v) want (nil, error), got (%v, %v)", test.desc, testAuthKey, test.params, got, err)
 			}
 		})
