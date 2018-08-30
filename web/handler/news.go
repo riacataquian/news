@@ -34,11 +34,7 @@ var (
 func List(ctx context.Context, _ store.Store, r *http.Request) (*SuccessResponse, error) {
 	r.ParseForm()
 
-	// Requests to external services should have timeouts.
-	reqCtx, cancel := context.WithTimeout(ctx, defaultDuration)
-	defer cancel()
-
-	client = newsclient.NewFromContext(reqCtx, listEndpoint)
+	client = newsclient.New(listEndpoint)
 	params := new(list.Params)
 	err := schema.NewDecoder().Decode(params, r.Form)
 	if err != nil {
@@ -49,7 +45,11 @@ func List(ctx context.Context, _ store.Store, r *http.Request) (*SuccessResponse
 		params.Page = 1
 	}
 
-	res, err := fetch(ctx, params)
+	// Requests to external services should have timeouts.
+	reqCtx, cancel := context.WithTimeout(ctx, defaultDuration)
+	defer cancel()
+
+	res, err := fetch(reqCtx, params)
 	if err != nil {
 		return nil, &httperror.HTTPError{
 			Code:       http.StatusBadRequest,
@@ -75,11 +75,7 @@ func List(ctx context.Context, _ store.Store, r *http.Request) (*SuccessResponse
 func TopHeadlines(ctx context.Context, _ store.Store, r *http.Request) (*SuccessResponse, error) {
 	r.ParseForm()
 
-	// Requests to external services should have timeouts.
-	reqCtx, cancel := context.WithTimeout(ctx, defaultDuration)
-	defer cancel()
-
-	client = newsclient.NewFromContext(reqCtx, headlinesEndpoint)
+	client = newsclient.New(headlinesEndpoint)
 	params := new(headlines.Params)
 	err := schema.NewDecoder().Decode(params, r.Form)
 	if err != nil {
@@ -90,7 +86,11 @@ func TopHeadlines(ctx context.Context, _ store.Store, r *http.Request) (*Success
 		params.Page = 1
 	}
 
-	res, err := fetch(ctx, params)
+	// Requests to external services should have timeouts.
+	reqCtx, cancel := context.WithTimeout(ctx, defaultDuration)
+	defer cancel()
+
+	res, err := fetch(reqCtx, params)
 	if err != nil {
 		return nil, &httperror.HTTPError{
 			Code:       http.StatusBadRequest,

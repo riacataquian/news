@@ -69,7 +69,7 @@ func List(ctx context.Context, repo store.Store, r *http.Request) (*Log, error) 
 	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	client = newsclient.NewFromContext(reqCtx, listEndpoint)
+	client = newsclient.New(listEndpoint)
 	started := timer.Now()
 
 	var queried []TopQueried
@@ -80,7 +80,7 @@ func List(ctx context.Context, repo store.Store, r *http.Request) (*Log, error) 
 				Language: defaultLang,
 				Domains:  strings.Join(top.Values, ","),
 			}
-			_, err := fetchAndPersist(ctx, repo, client, params)
+			_, err := fetchAndPersist(reqCtx, repo, client, params)
 			if err != nil {
 				return nil, err
 			}
@@ -90,7 +90,7 @@ func List(ctx context.Context, repo store.Store, r *http.Request) (*Log, error) 
 				Language: defaultLang,
 				Sources:  strings.Join(top.Values, ","),
 			}
-			_, err := fetchAndPersist(ctx, repo, client, params)
+			_, err := fetchAndPersist(reqCtx, repo, client, params)
 			if err != nil {
 				return nil, err
 			}
@@ -106,7 +106,7 @@ func List(ctx context.Context, repo store.Store, r *http.Request) (*Log, error) 
 				Language: defaultLang,
 				Query:    strings.Join(q, "+"),
 			}
-			_, err := fetchAndPersist(ctx, repo, client, params)
+			_, err := fetchAndPersist(reqCtx, repo, client, params)
 			if err != nil {
 				return nil, err
 			}

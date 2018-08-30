@@ -22,18 +22,17 @@ func (fp fakeParams) Encode() (string, error) {
 	return "language=" + fp.lang, nil
 }
 
-func TestNewFromContext(t *testing.T) {
-	ctx := context.Background()
+func TestNew(t *testing.T) {
 	testSE := ServiceEndpoint{
 		RequestURL: "http://some-request-url",
 		DocsURL:    "some-docs-url",
 	}
-	got := NewFromContext(ctx, testSE)
-	want := &Client{ctx: ctx, ServiceEndpoint: testSE}
+	got := New(testSE)
+	want := &Client{ServiceEndpoint: testSE}
 
 	if diff := pretty.Compare(got, want); diff != "" {
 		desc := "returns a new newsclient"
-		t.Errorf("%s: NewFromContext(): Diff (-got +want)\n%s", desc, diff)
+		t.Errorf("%s: New(): Diff (-got +want)\n%s", desc, diff)
 	}
 }
 

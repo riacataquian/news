@@ -33,15 +33,11 @@ type ServiceEndpoint struct {
 // See https://newsapi.org/docs/endpoints for the list of available endpoints.
 type Client struct {
 	ServiceEndpoint
-
-	// Unexported fields.
-	ctx context.Context
 }
 
-// NewFromContext returns a new Client.
-// The supplied context.Context can be used later for HTTP request timeouts and cancellations.
-func NewFromContext(ctx context.Context, se ServiceEndpoint) *Client {
-	return &Client{ctx: ctx, ServiceEndpoint: se}
+// New returns a new Client.
+func New(se ServiceEndpoint) *Client {
+	return &Client{ServiceEndpoint: se}
 }
 
 // Get fetches news from newsapi endpoints.
