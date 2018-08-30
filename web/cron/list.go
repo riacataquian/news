@@ -135,8 +135,8 @@ func fetchAndPersist(ctx context.Context, repo store.Store, client newsclient.HT
 		return nil, err
 	}
 
-	if len(res.Articles) > 0 {
-		err := persistence.Create(ctx, repo, timer, res.Articles)
+	for _, row := range res.Articles {
+		err := persistence.ScanRow(row).Create(repo, timer)
 		if err != nil {
 			return nil, err
 		}

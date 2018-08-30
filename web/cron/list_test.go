@@ -159,22 +159,8 @@ func TestFetchAndPersist(t *testing.T) {
 				),
 				toStoreRow(
 					123,
-					"some-author-2",
-					"some-title-2",
-					"some-description-2",
-					"some-URL-2",
-					"some-image-url-2",
-					time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
-				),
-				toStoreRow(
-					123,
 					"bloomberg",
 					"Bloomberg",
-				),
-				toStoreRow(
-					123,
-					"financial-times",
-					"Financial Times",
 				),
 			},
 		},

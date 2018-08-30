@@ -3,37 +3,65 @@
 package persistence
 
 import (
-	"context"
-
 	"github.com/riacataquian/news/api/news"
 	"github.com/riacataquian/news/internal/clock"
 	"github.com/riacataquian/news/internal/store"
 )
 
+// News ...
+type News struct {
+	*news.News
+}
+
+// Source ...
+type Source struct {
+	*news.Source
+}
+
+// ScanRow ...
+func ScanRow(row *news.News) *News {
+	return &News{
+		News: &news.News{
+			Source:      row.Source,
+			Author:      row.Author,
+			Title:       row.Title,
+			Description: row.Description,
+			URL:         row.URL,
+			ImageURL:    row.ImageURL,
+			PublishedAt: row.PublishedAt,
+		},
+	}
+}
+
 // Create persists rows to the supplied data repository.
 // It makes use of timer to retrieve time.Now().Nanosecond() which is used as a resource ID.
-func Create(_ context.Context, repo store.Store, timer clock.Time, rows []*news.News) error {
-	var nrs []store.Row
-	var srs []store.Row
-	for _, news := range rows {
-		nsecid := timer.Now().Nanosecond()
-		nrs = append(nrs, newsToRow(nsecid, news))
+func (row *News) Create(repo store.Store, timer clock.Time) error {
+	nsecid := timer.Now().Nanosecond()
 
-		if news.Source != nil {
-			srs = append(srs, srcToRow(nsecid, news.Source))
+	var srow store.Row
+	nrow := newsToRow(nsecid, row)
+	if row.Source != nil {
+		src := &Source{
+			Source: &news.Source{
+				ID:   row.Source.ID,
+				Name: row.Source.Name,
+			},
 		}
+		srow = srcToRow(nsecid, src)
 	}
 
 	// NOTE: Insertion is relative to the column declaration, order matters.
 
 	nc := []string{"app_id", "author", "title", "description", "url", "image_url", "published_at"}
-	if err := repo.Create("news", nc, nrs...); err != nil {
+	rows := []store.Row{nrow}
+	if err := repo.Create("news", nc, rows...); err != nil {
 		return err
 	}
 
-	if len(srs) > 0 {
+	if row.Source != nil {
 		sc := []string{"news_id", "id", "name"}
-		if err := repo.Create("source", sc, srs...); err != nil {
+		rows := []store.Row{srow}
+		if err := repo.Create("source", sc, rows...); err != nil {
 			return err
 		}
 	}
@@ -41,7 +69,7 @@ func Create(_ context.Context, repo store.Store, timer clock.Time, rows []*news.
 	return nil
 }
 
-func newsToRow(nsecid int, n *news.News) (row store.Row) {
+func newsToRow(nsecid int, n *News) (row store.Row) {
 	row = append(row, nsecid)
 	row = append(row, n.Author)
 	row = append(row, n.Title)
@@ -52,7 +80,7 @@ func newsToRow(nsecid int, n *news.News) (row store.Row) {
 	return
 }
 
-func srcToRow(nsecid int, s *news.Source) (row store.Row) {
+func srcToRow(nsecid int, s *Source) (row store.Row) {
 	row = append(row, nsecid)
 	row = append(row, s.ID)
 	row = append(row, s.Name)
