@@ -3,7 +3,6 @@ package newsclient
 // This file contains fake definitions of client, response and server.
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -52,7 +51,6 @@ func setupFakeClient(url string) *Client {
 			RequestURL: url,
 			DocsURL:    "some-docs-url",
 		},
-		ctx: context.Background(),
 	}
 }
 

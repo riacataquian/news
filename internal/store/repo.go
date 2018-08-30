@@ -18,7 +18,7 @@ type Repo struct {
 // New returns a Store which is a handler to a database pool.
 //
 // It opens and establishes a connection to a Postgresql database pool if none is available.
-func New() Store {
+func New() *Repo {
 	conf := DBConfig{
 		Host: "localhost",
 		Port: 5432,

@@ -15,7 +15,6 @@ import (
 
 var (
 	originalClient     = client
-	originalRepo       = repo
 	originalTimer      = timer
 	originalTopQueried = topQueried
 )
@@ -72,14 +71,14 @@ func TestList(t *testing.T) {
 		defer teardown()
 
 		r := httptest.NewRequest("GET", "/test", nil)
-		got, err := List(context.Background(), r)
+		got, err := List(context.Background(), fakes.store, r)
 		if err != nil {
-			t.Errorf("%s: List(_, _): want (_, nil), got (_, %v)", test.desc, err)
+			t.Errorf("%s: List(_, _, _): want (_, nil), got (_, %v)", test.desc, err)
 		}
 
 		if test.wantLog != nil {
 			if diff := pretty.Compare(got, test.wantLog); diff != "" {
-				t.Errorf("%s: List(_, _) diff: (-got +want)\n%s", test.desc, diff)
+				t.Errorf("%s: List(_, _, _) diff: (-got +want)\n%s", test.desc, diff)
 			}
 		}
 	}
@@ -106,10 +105,10 @@ func TestListErrors(t *testing.T) {
 	defer teardown()
 
 	r := httptest.NewRequest("GET", "/test", nil)
-	got, err := List(context.Background(), r)
+	got, err := List(context.Background(), fakes.store, r)
 	if err == nil {
 		desc := "returns an error when API_KEY is missing"
-		t.Errorf("%s: List(_, _): want (_, error), got (%v, %v)", desc, got, err)
+		t.Errorf("%s: List(_, _, _): want (_, error), got (%v, %v)", desc, got, err)
 	}
 }
 
@@ -160,22 +159,8 @@ func TestFetchAndPersist(t *testing.T) {
 				),
 				toStoreRow(
 					123,
-					"some-author-2",
-					"some-title-2",
-					"some-description-2",
-					"some-URL-2",
-					"some-image-url-2",
-					time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
-				),
-				toStoreRow(
-					123,
 					"bloomberg",
 					"Bloomberg",
-				),
-				toStoreRow(
-					123,
-					"financial-times",
-					"Financial Times",
 				),
 			},
 		},
@@ -193,20 +178,20 @@ func TestFetchAndPersist(t *testing.T) {
 		}
 		defer teardown()
 
-		got, err := fetchAndPersist(context.Background(), client, test.params)
+		got, err := fetchAndPersist(context.Background(), fakes.store, client, test.params)
 		if err != nil {
-			t.Errorf("fetchAndPersist(_, _, %v): want (%v, nil), got (%v, %v)", test.params, test.wantResponse, got, err)
+			t.Errorf("fetchAndPersist(_, _, _, %v): want (%v, nil), got (%v, %v)", test.params, test.wantResponse, got, err)
 		}
 
 		if test.wantResponse != nil {
 			if diff := pretty.Compare(got, test.wantResponse); diff != "" {
-				t.Errorf("%s: fetchAndPersist(_, _, %v) diff: (-got +want)\n%s", test.desc, test.params, diff)
+				t.Errorf("%s: fetchAndPersist(_, _, _, %v) diff: (-got +want)\n%s", test.desc, test.params, diff)
 			}
 		}
 
 		if len(test.wantRows) > 0 {
 			if diff := pretty.Compare(fakes.store.rows, test.wantRows); diff != "" {
-				t.Errorf("%s: fetchAndPersist(_, _, %v) diff: (-got +want)\n%s", test.desc, test.params, diff)
+				t.Errorf("%s: fetchAndPersist(_, _, _, %v) diff: (-got +want)\n%s", test.desc, test.params, diff)
 			}
 		}
 	}
@@ -254,9 +239,9 @@ func TestFetchAndPersistErrors(t *testing.T) {
 			Language: defaultLang,
 			Domains:  "some-domain-1,some-domain-2",
 		}
-		got, err := fetchAndPersist(context.Background(), client, params)
+		got, err := fetchAndPersist(context.Background(), fakes.store, client, params)
 		if err == nil {
-			t.Errorf("%s: fetchAndPersist(_, _, %v): want (_, error), got (%v, %v)", test.desc, test.params, got, err)
+			t.Errorf("%s: fetchAndPersist(_, _, _, %v): want (_, error), got (%v, %v)", test.desc, test.params, got, err)
 		}
 	}
 }

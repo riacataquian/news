@@ -1,7 +1,6 @@
 package persistence
 
 import (
-	"context"
 	"os"
 	"testing"
 	"time"
@@ -28,7 +27,7 @@ func TestPersist(t *testing.T) {
 		clock *fakeclock
 		repo  *fakestore
 		want  []store.Row
-		in    []*news.News
+		in    *News
 	}{
 		{
 			desc:  "persists news rows to repo",
@@ -45,8 +44,8 @@ func TestPersist(t *testing.T) {
 					time.Date(2016, time.August, 15, 0, 0, 0, 123, time.UTC),
 				),
 			},
-			in: []*news.News{
-				{
+			in: &News{
+				News: &news.News{
 					Author:      "some-author",
 					Title:       "some-title",
 					Description: "some-description",
@@ -76,8 +75,8 @@ func TestPersist(t *testing.T) {
 					"some-source-name",
 				),
 			},
-			in: []*news.News{
-				{
+			in: &News{
+				News: &news.News{
 					Source: &news.Source{
 						ID:   "some-source-id",
 						Name: "some-source-name",
@@ -94,7 +93,7 @@ func TestPersist(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		err := Create(context.Background(), test.repo, test.clock, test.in)
+		err := test.in.Create(test.repo, test.clock)
 		if err != nil {
 			t.Errorf("Create(_, %v): want nil, got %v", test.in, err)
 		}
@@ -108,8 +107,8 @@ func TestPersist(t *testing.T) {
 func TestCreateError(t *testing.T) {
 	repo := &fakestore{isValid: false}
 	clock := fakeclock{}
-	in := []*news.News{
-		{
+	in := &News{
+		News: &news.News{
 			Source: &news.Source{
 				ID:   "some-source-id",
 				Name: "some-source-name",
@@ -123,7 +122,7 @@ func TestCreateError(t *testing.T) {
 		},
 	}
 
-	err := Create(context.Background(), repo, clock, in)
+	err := in.Create(repo, clock)
 	if err == nil {
 		desc := "returns an error when repo errored"
 		t.Errorf("%s: Create(_, %v, %v, %v) = (_, nil), want (_, error)", desc, repo, clock, in)
@@ -132,23 +131,26 @@ func TestCreateError(t *testing.T) {
 
 func TestNewsToRow(t *testing.T) {
 	inID := 123
-	in := &news.News{
-		Author:      "test-author",
-		Title:       "test-title",
-		Description: "test-description",
-		URL:         "http://test-url",
-		ImageURL:    "http://test-image-url",
-		PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
+	in := &News{
+		News: &news.News{
+			Author:      "test-author",
+			Title:       "test-title",
+			Description: "test-description",
+			URL:         "http://test-url",
+			ImageURL:    "http://test-image-url",
+			PublishedAt: time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC),
+		},
 	}
 
-	var want store.Row
-	want = append(want, inID)
-	want = append(want, in.Author)
-	want = append(want, in.Title)
-	want = append(want, in.Description)
-	want = append(want, in.URL)
-	want = append(want, in.ImageURL)
-	want = append(want, in.PublishedAt)
+	want := store.Row{
+		inID,
+		in.Author,
+		in.Title,
+		in.Description,
+		in.URL,
+		in.ImageURL,
+		in.PublishedAt,
+	}
 
 	got := newsToRow(inID, in)
 	if diff := pretty.Compare(got, want); diff != "" {
@@ -159,15 +161,18 @@ func TestNewsToRow(t *testing.T) {
 
 func TestSrcToRow(t *testing.T) {
 	inID := 123
-	in := &news.Source{
-		ID:   "test-id-456",
-		Name: "test-source",
+	in := &Source{
+		Source: &news.Source{
+			ID:   "test-id-456",
+			Name: "test-source",
+		},
 	}
 
-	var want store.Row
-	want = append(want, inID)
-	want = append(want, in.ID)
-	want = append(want, in.Name)
+	want := store.Row{
+		inID,
+		in.ID,
+		in.Name,
+	}
 
 	got := srcToRow(inID, in)
 	if diff := pretty.Compare(got, want); diff != "" {

@@ -19,7 +19,7 @@ type Params interface {
 
 // HTTPClient describes an HTTP client.
 type HTTPClient interface {
-	Get(string, Params) (*news.Response, error)
+	Get(context.Context, string, Params) (*news.Response, error)
 }
 
 // ServiceEndpoint wraps the URLs for newsapi endpoints.
@@ -33,15 +33,11 @@ type ServiceEndpoint struct {
 // See https://newsapi.org/docs/endpoints for the list of available endpoints.
 type Client struct {
 	ServiceEndpoint
-
-	// Unexported fields.
-	ctx context.Context
 }
 
-// NewFromContext returns a new Client.
-// The supplied context.Context can be used later for HTTP request timeouts and cancellations.
-func NewFromContext(ctx context.Context, se ServiceEndpoint) *Client {
-	return &Client{ctx: ctx, ServiceEndpoint: se}
+// New returns a new Client.
+func New(se ServiceEndpoint) *Client {
+	return &Client{ServiceEndpoint: se}
 }
 
 // Get fetches news from newsapi endpoints.
@@ -50,7 +46,7 @@ func NewFromContext(ctx context.Context, se ServiceEndpoint) *Client {
 // This can be used to enforce timeouts and cancellations.
 //
 // The request's `X-Api-Key` header is set with the supplied authKey.
-func (client *Client) Get(authKey string, params Params) (*news.Response, error) {
+func (client *Client) Get(ctx context.Context, authKey string, params Params) (*news.Response, error) {
 	// Encode query parameters from the request origin.
 	q, err := params.Encode()
 	if err != nil {
@@ -61,10 +57,7 @@ func (client *Client) Get(authKey string, params Params) (*news.Response, error)
 	if err != nil {
 		return nil, err
 	}
-
-	if client.ctx != nil {
-		req = req.WithContext(client.ctx)
-	}
+	req = req.WithContext(ctx)
 
 	// Inject request authentication key.
 	req.Header.Set("X-Api-Key", authKey)

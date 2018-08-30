@@ -15,7 +15,7 @@ type Response struct {
 	Articles     []*News `json:"articles"`
 }
 
-// News describes a news object.
+// News describes a news object from newsapi.
 type News struct {
 	*Source     `json:"source"`
 	Author      string    `json:"author"`
@@ -26,7 +26,7 @@ type News struct {
 	PublishedAt time.Time `json:"publishedAt"` // in UTC format.
 }
 
-// Source describes a news source.
+// Source describes a news source from newsapi.
 type Source struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`

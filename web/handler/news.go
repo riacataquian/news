@@ -12,6 +12,7 @@ import (
 	"github.com/riacataquian/news/internal/newsclient"
 	"github.com/riacataquian/news/internal/newsclient/headlines"
 	"github.com/riacataquian/news/internal/newsclient/list"
+	"github.com/riacataquian/news/internal/store"
 
 	"github.com/gorilla/schema"
 )
@@ -30,14 +31,10 @@ var (
 // List is the HTTP handler for news requests to newsapi's everything endpoint.
 //
 // Official docs: https://newsapi.org/docs/endpoints/everything.
-func List(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
+func List(ctx context.Context, _ store.Store, r *http.Request) (*SuccessResponse, error) {
 	r.ParseForm()
 
-	// Requests to external services should have timeouts.
-	reqCtx, cancel := context.WithTimeout(ctx, defaultDuration)
-	defer cancel()
-
-	client = newsclient.NewFromContext(reqCtx, listEndpoint)
+	client = newsclient.New(listEndpoint)
 	params := new(list.Params)
 	err := schema.NewDecoder().Decode(params, r.Form)
 	if err != nil {
@@ -48,7 +45,11 @@ func List(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
 		params.Page = 1
 	}
 
-	res, err := fetch(params)
+	// Requests to external services should have timeouts.
+	reqCtx, cancel := context.WithTimeout(ctx, defaultDuration)
+	defer cancel()
+
+	res, err := fetch(reqCtx, params)
 	if err != nil {
 		return nil, &httperror.HTTPError{
 			Code:       http.StatusBadRequest,
@@ -71,14 +72,10 @@ func List(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
 // TopHeadlines is the HTTP handler for news requests to newsapi's top-headlines endpoint.
 //
 // Official docs: https://newsapi.org/docs/endpoints/top-headlines.
-func TopHeadlines(ctx context.Context, r *http.Request) (*SuccessResponse, error) {
+func TopHeadlines(ctx context.Context, _ store.Store, r *http.Request) (*SuccessResponse, error) {
 	r.ParseForm()
 
-	// Requests to external services should have timeouts.
-	reqCtx, cancel := context.WithTimeout(ctx, defaultDuration)
-	defer cancel()
-
-	client = newsclient.NewFromContext(reqCtx, headlinesEndpoint)
+	client = newsclient.New(headlinesEndpoint)
 	params := new(headlines.Params)
 	err := schema.NewDecoder().Decode(params, r.Form)
 	if err != nil {
@@ -89,7 +86,11 @@ func TopHeadlines(ctx context.Context, r *http.Request) (*SuccessResponse, error
 		params.Page = 1
 	}
 
-	res, err := fetch(params)
+	// Requests to external services should have timeouts.
+	reqCtx, cancel := context.WithTimeout(ctx, defaultDuration)
+	defer cancel()
+
+	res, err := fetch(reqCtx, params)
 	if err != nil {
 		return nil, &httperror.HTTPError{
 			Code:       http.StatusBadRequest,
@@ -110,11 +111,11 @@ func TopHeadlines(ctx context.Context, r *http.Request) (*SuccessResponse, error
 }
 
 // fetch performs the request to the client given params.
-func fetch(params newsclient.Params) (*news.Response, error) {
-	authKey, err := auth.LookupAndSetAuth()
+func fetch(ctx context.Context, params newsclient.Params) (*news.Response, error) {
+	authKey, err := auth.LookupAPIAuthKey()
 	if err != nil {
 		return nil, err
 	}
 
-	return client.Get(authKey, params)
+	return client.Get(ctx, authKey, params)
 }

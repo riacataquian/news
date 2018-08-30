@@ -1,6 +1,7 @@
 package cron
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -52,7 +53,7 @@ type fakeclient struct {
 	serviceEndpoint
 }
 
-func (f *fakeclient) Get(authKey string, p newsclient.Params) (*news.Response, error) {
+func (f *fakeclient) Get(ctx context.Context, authKey string, p newsclient.Params) (*news.Response, error) {
 	if f.isError {
 		return nil, errors.New("some error")
 	}
@@ -160,9 +161,6 @@ func setup(t *testing.T, conf config) (*fakes, teardown) {
 	fakeclock := &fakeclock{nsec: conf.clockNanosec}
 
 	timer = fakeclock
-	repo = func() store.Store {
-		return fakestore
-	}
 
 	fakes := fakes{
 		server: fakeserver,
@@ -175,7 +173,6 @@ func setup(t *testing.T, conf config) (*fakes, teardown) {
 		fakeserver.Close()
 
 		client = originalClient
-		repo = originalRepo
 		timer = originalTimer
 		topQueried = originalTopQueried
 	}

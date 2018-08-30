@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestLookupAndSetAuth(t *testing.T) {
+func TestLookupAPIAuthKey(t *testing.T) {
 	tests := []struct {
 		desc    string
 		wantKey string
@@ -27,15 +27,15 @@ func TestLookupAndSetAuth(t *testing.T) {
 			os.Clearenv()
 		}()
 
-		got, err := LookupAndSetAuth()
+		got, err := LookupAPIAuthKey()
 		if test.wantErr != nil && err != nil {
 			if test.wantErr != err {
-				t.Fatalf("%s: LookupAndSetAuth() = (_, %v), got (_, %v)", test.desc, test.wantErr, err)
+				t.Fatalf("%s: LookupAPIAuthKey() = (_, %v), got (_, %v)", test.desc, test.wantErr, err)
 			}
 		}
 
 		if test.wantKey != got {
-			t.Errorf("%s: LookupAndSetAuth() = (%v, _), got (%v, _)", test.desc, test.wantKey, got)
+			t.Errorf("%s: LookupAPIAuthKey() = (%v, _), got (%v, _)", test.desc, test.wantKey, got)
 		}
 	}
 }

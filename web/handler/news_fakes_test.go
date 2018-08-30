@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/riacataquian/news/api/news"
 	"github.com/riacataquian/news/internal/newsclient"
+	"github.com/riacataquian/news/internal/store"
 )
 
 var fakeResponse = &news.Response{
@@ -50,7 +52,7 @@ type fakeclient struct {
 	serviceEndpoint
 }
 
-func (f *fakeclient) Get(authKey string, p newsclient.Params) (*news.Response, error) {
+func (f *fakeclient) Get(ctx context.Context, authKey string, p newsclient.Params) (*news.Response, error) {
 	if f.isError {
 		return nil, errors.New("some error")
 	}
@@ -112,9 +114,16 @@ type config struct {
 	isClientError bool
 }
 
+type fakestore struct{}
+
+func (f *fakestore) Create(_ string, _ []string, _ ...store.Row) error {
+	return nil
+}
+
 // fakes encapsulates a test's fake structures.
 type fakes struct {
 	server *httptest.Server
+	store  *fakestore
 	client newsclient.HTTPClient
 }
 
@@ -132,10 +141,12 @@ func setup(t *testing.T, conf config) (*fakes, teardown) {
 			RequestURL: fakeserver.URL,
 		},
 	}
+	fakestore := &fakestore{}
 	client = fakeclient
 
 	fakes := fakes{
 		server: fakeserver,
+		store:  fakestore,
 		client: fakeclient,
 	}
 
