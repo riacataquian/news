@@ -13,8 +13,8 @@ import (
 	"github.com/riacataquian/news/internal/clock"
 	"github.com/riacataquian/news/internal/newsclient"
 	"github.com/riacataquian/news/internal/newsclient/list"
+	"github.com/riacataquian/news/internal/persistence"
 	"github.com/riacataquian/news/internal/store"
-	"github.com/riacataquian/news/web/cron/persistence"
 )
 
 const (
