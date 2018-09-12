@@ -1,5 +1,5 @@
 // Package main is the entry point for News platform web interface.
-package main
+package main // import "github.com/riacataquian/news"
 
 import (
 	"context"
